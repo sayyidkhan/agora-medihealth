@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AgoraRTC from 'agora-rtc-sdk-ng'
-import { Mic, MicOff, PhoneOff, Stethoscope, Loader2 } from 'lucide-react'
+import { Mic, MicOff, PhoneOff, Stethoscope, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import axios from 'axios'
 
 const API = '/api'
@@ -167,125 +167,146 @@ export default function Consult() {
     }
   }
 
+  const [showTranscript, setShowTranscript] = useState(false)
+
   if (!name) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-blue-950 flex flex-col max-w-lg mx-auto">
+
+      {/* Status bar */}
+      <div className={`h-1 w-full transition-all ${
+        status === 'active' ? 'bg-green-500' :
+        status === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+        status === 'ending' ? 'bg-orange-500' : 'bg-red-500'
+      }`} />
+
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center">
-            <Stethoscope size={18} className="text-white" />
+      <header className="flex items-center justify-between px-5 py-4">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
+            <Stethoscope size={14} className="text-white" />
           </div>
-          <span className="font-bold text-white">MediVoice</span>
+          <span className="font-bold text-white text-sm">MediVoice</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {status === 'active' && (
-            <span className="text-slate-400 text-sm font-mono">{formatDuration(duration)}</span>
+            <span className="text-slate-400 text-xs font-mono">{formatDuration(duration)}</span>
           )}
-          <span className={`text-xs px-3 py-1 rounded-full ${
-            status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-            status === 'connecting' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-            status === 'ending' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
-            'bg-red-500/20 text-red-400 border border-red-500/30'
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+            status === 'active' ? 'bg-green-500/20 text-green-400' :
+            status === 'connecting' ? 'bg-yellow-500/20 text-yellow-400' :
+            status === 'ending' ? 'bg-orange-500/20 text-orange-400' :
+            'bg-red-500/20 text-red-400'
           }`}>
-            {status === 'connecting' ? 'Connecting...' :
+            {status === 'connecting' ? 'Connecting…' :
              status === 'active' ? '● Live' :
-             status === 'ending' ? 'Ending...' : 'Error'}
+             status === 'ending' ? 'Ending…' : 'Error'}
           </span>
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col md:flex-row">
-        {/* Doctor Avatar Panel */}
-        <div className="md:w-1/3 flex flex-col items-center justify-center p-8 border-b md:border-b-0 md:border-r border-white/10">
-          <div className="relative mb-6">
-            <div className={`w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-6xl ${status === 'active' ? 'animate-pulse' : ''}`}>
-              {voiceType?.includes('female') ? '👩‍⚕️' : '👨‍⚕️'}
-            </div>
-            {status === 'active' && (
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs px-3 py-1 rounded-full">
-                Speaking
-              </div>
-            )}
+      {/* Doctor Avatar — takes most of the screen */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 gap-4">
+        {error ? (
+          <div className="w-full bg-red-500/20 border border-red-500/30 rounded-2xl p-5 text-red-300 text-center">
+            <p className="font-semibold mb-1">Connection Error</p>
+            <p className="text-sm">{error}</p>
+            <button onClick={() => navigate('/')} className="mt-4 bg-white/10 px-5 py-2 rounded-xl text-white text-sm">Go Back</button>
           </div>
-          <h2 className="text-white font-semibold text-lg">AI {doctorType}</h2>
-          <p className="text-slate-400 text-sm mt-1">MediVoice Clinical Assistant</p>
-          <p className="text-slate-500 text-xs mt-4 text-center">Consulting: <span className="text-slate-300">{name}</span></p>
-
-          {status === 'connecting' && (
-            <div className="mt-6 flex items-center gap-2 text-yellow-400">
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm">Connecting to doctor...</span>
+        ) : (
+          <>
+            {/* Pulsing avatar */}
+            <div className="relative">
+              {status === 'active' && (
+                <>
+                  <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping scale-125" />
+                  <div className="absolute inset-0 rounded-full bg-blue-500/10 animate-ping scale-150 animation-delay-150" />
+                </>
+              )}
+              <div className={`relative w-36 h-36 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center text-7xl shadow-2xl shadow-blue-900/50 ${status === 'connecting' ? 'opacity-60' : ''}`}>
+                {voiceType?.includes('female') ? '👩‍⚕️' : '👨‍⚕️'}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Transcript Panel */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-6 space-y-3 max-h-[60vh] md:max-h-none">
-            {error ? (
-              <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-4 text-red-300">
-                <p className="font-medium">Connection Error</p>
-                <p className="text-sm mt-1">{error}</p>
-                <button onClick={() => navigate('/')} className="mt-3 text-sm underline">Go back</button>
-              </div>
-            ) : transcript.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-3">
-                <Loader2 size={32} className="animate-spin" />
-                <p>Waiting for the doctor to connect...</p>
-              </div>
-            ) : (
-              transcript.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-sm'
-                      : msg.role === 'system'
-                      ? 'bg-white/5 text-slate-400 text-xs italic border border-white/10 w-full text-center'
-                      : 'bg-white/10 text-slate-100 rounded-bl-sm'
-                  }`}>
-                    {msg.role === 'agent' && (
-                      <span className="text-xs text-slate-400 block mb-1">AI Doctor</span>
-                    )}
-                    {msg.role === 'user' && (
-                      <span className="text-xs text-blue-200 block mb-1">{name}</span>
-                    )}
-                    {msg.text}
-                  </div>
+            <div className="text-center">
+              <h2 className="text-white font-bold text-xl">AI {doctorType}</h2>
+              <p className="text-slate-400 text-sm mt-0.5">Consulting {name}</p>
+              {status === 'connecting' && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-yellow-400 text-sm">
+                  <Loader2 size={14} className="animate-spin" />
+                  Connecting to doctor…
                 </div>
-              ))
+              )}
+              {status === 'ending' && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-orange-400 text-sm">
+                  <Loader2 size={14} className="animate-spin" />
+                  Saving consultation…
+                </div>
+              )}
+            </div>
+
+            {/* Transcript toggle */}
+            <button
+              onClick={() => setShowTranscript(v => !v)}
+              className="flex items-center gap-1.5 text-slate-400 text-xs border border-white/10 px-3 py-1.5 rounded-full"
+            >
+              {showTranscript ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+              {showTranscript ? 'Hide transcript' : 'Show transcript'}
+            </button>
+
+            {/* Transcript */}
+            {showTranscript && (
+              <div className="w-full max-h-48 overflow-y-auto space-y-2 bg-white/5 rounded-2xl p-3 border border-white/10">
+                {transcript.length === 0 ? (
+                  <p className="text-slate-500 text-xs text-center py-4">Waiting for conversation to start…</p>
+                ) : (
+                  transcript.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                        msg.role === 'user' ? 'bg-blue-600 text-white' :
+                        msg.role === 'system' ? 'text-slate-500 italic text-center w-full' :
+                        'bg-white/10 text-slate-200'
+                      }`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={transcriptEndRef} />
+              </div>
             )}
-            <div ref={transcriptEndRef} />
-          </div>
+          </>
+        )}
+      </div>
 
-          {/* Controls */}
-          <div className="border-t border-white/10 p-6 flex items-center justify-center gap-6">
-            <button
-              onClick={toggleMute}
-              disabled={status !== 'active'}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                muted
-                  ? 'bg-red-500/30 border-2 border-red-500 text-red-400'
-                  : 'bg-white/10 border-2 border-white/20 text-white hover:bg-white/20'
-              } disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              {muted ? <MicOff size={22} /> : <Mic size={22} />}
-            </button>
+      {/* Fixed bottom controls */}
+      <div className="px-6 pb-10 pt-4 border-t border-white/10">
+        <div className="flex items-center justify-center gap-8">
+          {/* Mute */}
+          <button
+            onClick={toggleMute}
+            disabled={status !== 'active'}
+            className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-30 ${
+              muted ? 'bg-red-500/30 border-2 border-red-500 text-red-400' : 'bg-white/10 border-2 border-white/20 text-white'
+            }`}
+          >
+            {muted ? <MicOff size={20} /> : <Mic size={20} />}
+          </button>
 
-            <button
-              onClick={endSession}
-              disabled={status !== 'active'}
-              className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <PhoneOff size={24} className="text-white" />
-            </button>
-          </div>
+          {/* End call */}
+          <button
+            onClick={endSession}
+            disabled={status !== 'active'}
+            className="w-20 h-20 rounded-full bg-red-600 active:bg-red-700 flex items-center justify-center shadow-xl shadow-red-900/50 transition-all active:scale-95 disabled:opacity-30"
+          >
+            <PhoneOff size={28} className="text-white" />
+          </button>
 
-          <p className="text-center text-xs text-slate-600 pb-4">
-            Click the red button to end consultation and submit for doctor review
-          </p>
+          {/* Spacer to balance layout */}
+          <div className="w-14" />
         </div>
+        <p className="text-center text-xs text-slate-600 mt-3">Tap the red button to end & submit for review</p>
       </div>
     </div>
   )

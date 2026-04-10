@@ -1,68 +1,89 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Stethoscope, Lock } from 'lucide-react'
+import { Stethoscope, ArrowLeft, Delete } from 'lucide-react'
+
+const PINPAD = ['1','2','3','4','5','6','7','8','9','','0','⌫']
 
 export default function DoctorLogin() {
   const navigate = useNavigate()
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
+  const [shaking, setShaking] = useState(false)
 
-  const handleLogin = (e) => {
-    e.preventDefault()
-    if (pin === '1234') {
-      localStorage.setItem('doctor_auth', 'true')
-      navigate('/doctor/dashboard')
-    } else {
-      setError('Invalid PIN. (Demo PIN: 1234)')
+  const handleKey = (key) => {
+    if (key === '⌫') {
+      setPin(p => p.slice(0, -1))
+      setError('')
+      return
+    }
+    if (pin.length >= 4) return
+    const next = pin + key
+    setPin(next)
+    if (next.length === 4) {
+      setTimeout(() => {
+        if (next === '1234') {
+          localStorage.setItem('doctor_auth', 'true')
+          navigate('/doctor/dashboard')
+        } else {
+          setShaking(true)
+          setError('Incorrect PIN')
+          setPin('')
+          setTimeout(() => setShaking(false), 500)
+        }
+      }, 150)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center mx-auto mb-4">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-blue-950 flex flex-col max-w-sm mx-auto">
+      <header className="px-5 py-4">
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 text-sm">
+          <ArrowLeft size={16} /> Patient App
+        </button>
+      </header>
+
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+        {/* Icon + title */}
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto shadow-xl shadow-blue-900/50">
             <Stethoscope size={28} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Doctor Portal</h1>
-          <p className="text-slate-400 mt-1 text-sm">MediVoice Clinical Dashboard</p>
+          <p className="text-slate-400 text-sm">MediVoice Clinical Dashboard</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-5">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-              <Lock size={14} /> Doctor PIN
-            </label>
-            <input
-              type="password"
-              value={pin}
-              onChange={e => setPin(e.target.value)}
-              placeholder="Enter your PIN"
-              maxLength={6}
-              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors text-center text-2xl tracking-widest"
-            />
-          </div>
+        {/* PIN dots */}
+        <div className={`flex gap-4 transition-all ${shaking ? 'animate-bounce' : ''}`}>
+          {[0,1,2,3].map(i => (
+            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all ${
+              i < pin.length
+                ? error ? 'bg-red-500 border-red-500' : 'bg-blue-400 border-blue-400'
+                : 'border-white/30'
+            }`} />
+          ))}
+        </div>
 
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+        {error && <p className="text-red-400 text-sm -mt-4">{error}</p>}
 
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors"
-          >
-            Enter Dashboard
-          </button>
-        </form>
+        {/* Numpad */}
+        <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+          {PINPAD.map((key, i) => (
+            key === '' ? <div key={i} /> :
+            <button
+              key={i}
+              onClick={() => handleKey(key)}
+              className={`h-16 rounded-2xl text-xl font-semibold transition-all active:scale-95 ${
+                key === '⌫'
+                  ? 'bg-white/5 text-slate-400 border border-white/10'
+                  : 'bg-white/10 text-white border border-white/10 active:bg-white/20'
+              }`}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
 
-        <p className="text-center text-xs text-slate-600 mt-4">
-          Demo PIN: <span className="text-slate-400">1234</span>
-        </p>
-
-        <button
-          onClick={() => navigate('/')}
-          className="w-full mt-4 text-slate-500 hover:text-slate-300 text-sm transition-colors"
-        >
-          ← Back to Patient App
-        </button>
+        <p className="text-slate-600 text-xs">Demo PIN: <span className="text-slate-500">1234</span></p>
       </div>
     </div>
   )
