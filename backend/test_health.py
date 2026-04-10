@@ -181,7 +181,12 @@ class TestElevenLabsHealth:
 
     @pytest.mark.asyncio
     async def test_elevenlabs_configured_voices_exist(self):
-        """All voice IDs configured in env vars must exist in ElevenLabs account."""
+        """All voice IDs configured in env vars must be resolvable via ElevenLabs API.
+
+        /v1/voices only lists account-owned voices.  Shared and pre-built library
+        voices are resolved individually via GET /v1/voices/{voice_id}, which works
+        for both owned and library voices.
+        """
         configured_voice_ids = {
             k: v for k, v in {
                 "ELEVENLABS_VOICE_ID_MALE": os.getenv("ELEVENLABS_VOICE_ID_MALE"),
@@ -192,26 +197,22 @@ class TestElevenLabsHealth:
             if v
         }
 
+        missing = {}
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                "https://api.elevenlabs.io/v1/voices",
-                headers={"xi-api-key": ELEVENLABS_API_KEY},
-            )
-            if resp.status_code != 200:
-                pytest.skip("Skipping voice existence check — /v1/voices unavailable")
+            for env_key, voice_id in configured_voice_ids.items():
+                try:
+                    resp = await client.get(
+                        f"https://api.elevenlabs.io/v1/voices/{voice_id}",
+                        headers={"xi-api-key": ELEVENLABS_API_KEY},
+                    )
+                    if resp.status_code != 200:
+                        missing[env_key] = voice_id
+                except httpx.RequestError as exc:
+                    pytest.fail(f"Could not reach ElevenLabs API while checking {env_key}: {exc}")
 
-            available_ids = {v["voice_id"] for v in resp.json().get("voices", [])}
-            missing = {
-                env_key: vid
-                for env_key, vid in configured_voice_ids.items()
-                if vid not in available_ids
-            }
-            # Pre-built voices (e.g. from ElevenLabs library) may not appear in /v1/voices
-            # so we only warn rather than hard-fail for those
-            if missing:
-                pytest.xfail(
-                    f"These voice IDs were not found under your account (may be shared/library voices): {missing}"
-                )
+        assert not missing, (
+            f"These voice IDs could not be resolved via ElevenLabs API: {missing}"
+        )
 
     @pytest.mark.asyncio
     async def test_elevenlabs_user_quota(self):
