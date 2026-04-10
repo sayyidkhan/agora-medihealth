@@ -11,6 +11,7 @@ import {
   CheckCircle,
   AlertTriangle,
   ChevronRight,
+  Trash2,
 } from 'lucide-react'
 import { getPatientSession } from '../patientSession'
 
@@ -27,6 +28,7 @@ export default function MyRecords() {
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
   const [downloadingId, setDownloadingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   const session = getPatientSession()
 
@@ -50,6 +52,19 @@ export default function MyRecords() {
     })()
     return () => { cancelled = true }
   }, [session?.id, navigate])
+
+  async function deleteConsultation(id) {
+    if (!window.confirm('Delete this consultation? This cannot be undone.')) return
+    setDeletingId(id)
+    try {
+      await axios.delete(`${API}/consultation/${id}`)
+      setList(prev => prev.filter(c => c.id !== id))
+    } catch {
+      alert('Failed to delete. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   async function downloadMC(id) {
     setDownloadingId(id)
@@ -165,6 +180,15 @@ export default function MyRecords() {
                           Download MC
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => deleteConsultation(c.id)}
+                        disabled={deletingId === c.id}
+                        className="ml-auto text-xs font-medium text-red-400/70 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/15 inline-flex items-center gap-1.5 disabled:opacity-50 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                      >
+                        {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        Delete
+                      </button>
                     </div>
                   </div>
                 )

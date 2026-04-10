@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, CheckCircle, AlertTriangle, User, Stethoscope, LogOut, RefreshCw, ChevronRight } from 'lucide-react'
+import { Clock, CheckCircle, AlertTriangle, User, Stethoscope, LogOut, RefreshCw, ChevronRight, Trash2, Loader2 } from 'lucide-react'
 import axios from 'axios'
 
 const API = '/api'
@@ -19,6 +19,7 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('pending')
   const [refreshing, setRefreshing] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     if (!localStorage.getItem('doctor_auth')) { navigate('/doctor'); return }
@@ -26,6 +27,20 @@ export default function DoctorDashboard() {
     const interval = setInterval(fetchConsultations, 15000)
     return () => clearInterval(interval)
   }, [])
+
+  async function deleteConsultation(e, id) {
+    e.stopPropagation()
+    if (!window.confirm('Delete this consultation? This cannot be undone.')) return
+    setDeletingId(id)
+    try {
+      await axios.delete(`${API}/consultation/${id}`)
+      setConsultations(prev => prev.filter(c => c.id !== id))
+    } catch {
+      alert('Failed to delete. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   async function fetchConsultations() {
     try {
@@ -140,6 +155,15 @@ export default function DoctorDashboard() {
                   </p>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={(e) => deleteConsultation(e, c.id)}
+                  disabled={deletingId === c.id}
+                  className="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 flex-shrink-0"
+                  title="Delete consultation"
+                >
+                  {deletingId === c.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
                 <ChevronRight size={16} className="text-slate-600 flex-shrink-0" />
               </button>
             )

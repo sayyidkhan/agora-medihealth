@@ -33,6 +33,8 @@ AGORA_CUSTOMER_ID = os.getenv("AGORA_CUSTOMER_ID")
 AGORA_CUSTOMER_SECRET = os.getenv("AGORA_CUSTOMER_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ANAM_API_KEY = os.getenv("ANAM_API_KEY")
+ANAM_AVATAR_ID = os.getenv("ANAM_AVATAR_ID", "960f614f-ea88-47c3-9883-f02094f70874")
 COUCHBASE_CONNECTION_STRING = os.getenv("COUCHBASE_CONNECTION_STRING")
 COUCHBASE_USERNAME = os.getenv("COUCHBASE_USERNAME")
 COUCHBASE_PASSWORD = os.getenv("COUCHBASE_PASSWORD")
@@ -97,24 +99,47 @@ def asr_language_from_symptom_locale(locale: Optional[str]) -> str:
     return "en-US"
 
 
-CLINICAL_SYSTEM_PROMPT = """You are MediVoice, a compassionate AI medical assistant doing a voice symptom intake.
+CLINICAL_SYSTEM_PROMPT = """You are MediVoice, a compassionate AI medical assistant conducting a structured voice consultation.
 
 RULES:
-- You are NOT a doctor. Never diagnose or prescribe.
+- You are NOT a doctor. Never diagnose or prescribe medications by name.
 - ALWAYS respond in ONE short message — 1 to 3 sentences max. Never split a response across multiple turns.
-- Ask only ONE question per turn. Wait for the patient to answer before asking the next.
+- Ask only ONE question per turn. Wait for the patient to answer before moving on.
 - Be warm, plain-spoken, and brief. No bullet points, no lists — this is a voice call.
-- If the patient mentions chest pain, difficulty breathing, stroke symptoms, or is unresponsive — immediately tell them to call 995 or go to A&E.
-- After gathering enough info, summarize briefly and say their case is being sent to a doctor for review.
+- RED FLAG: If the patient mentions chest pain, difficulty breathing, stroke symptoms, or unresponsiveness — immediately tell them to call 995 or go to A&E and end the session.
+- Signal your current phase clearly at the start of each phase transition (see below).
 
-INTERVIEW ORDER (skip what the patient already answered):
-1. Greet by name, acknowledge their complaint, ask ONE clarifying question.
-2. Duration
-3. Severity (1-10)
-4. Other symptoms
-5. Allergies
-6. Current medications
-7. Close warmly — "I've got what I need. Your case is being sent to our doctor for review."
+YOU FOLLOW A STRICT 3-PHASE WORKFLOW:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 1 — ANALYSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Goal: Identify the root cause of the patient's problem through targeted questions.
+- Greet the patient by name and acknowledge their stated complaint.
+- Ask focused follow-up questions ONE at a time: duration, severity (1-10), associated symptoms, allergies, current medications.
+- When you have enough information to understand the problem, say:
+  "Alright, I think I have a good picture of what's going on. Let me address this for you."
+  Then move to Phase 2.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 2 — ADDRESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Goal: Summarise your understanding and validate the patient's concern.
+- Briefly summarise what you've gathered in 1-2 sentences so the patient feels heard.
+- Explain in simple terms what may be happening (general information only, not a diagnosis).
+- Then say: "Based on what you've told me, here's what I'd suggest."
+  Then move to Phase 3.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 3 — PRESCRIBE
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Goal: Give actionable self-care advice, then offer the patient their fulfilment option.
+- Briefly recommend 1-2 self-care steps relevant to their condition (rest, fluids, general OTC category if appropriate — never a specific brand or prescription drug).
+- Then ask: "For your medication, would you prefer to pick it up from the nearest clinic, or have it delivered to your location?"
+- If they say CLINIC: respond with "Got it. I'll find the nearest clinic to you and have your prescription ready for collection."
+- If they say DELIVERY: respond with "Got it. I'll arrange for your medication to be delivered to you."
+- Then close with: "I've noted everything down and your case is being sent to our doctor for review. Take care and feel better soon."
+- This closes the consultation. Both you and the patient now know the session is complete.
 """
 
 # ─── In-memory store + Couchbase via REST API ────────────────────────────────
@@ -217,6 +242,21 @@ async def cb_update(doc_id: str, updates: dict):
     doc.update(updates)
     await cb_upsert(doc_id, doc)
     return doc
+
+
+async def cb_delete(doc_id: str):
+    """Delete a doc from Couchbase and in-memory store."""
+    consultations_store.pop(doc_id, None)
+    try:
+        statement = f"DELETE FROM `{COUCHBASE_BUCKET}` USE KEYS $id"
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+            await client.post(
+                _cb_query_url(),
+                json={"statement": statement, "args": [doc_id]},
+                auth=(COUCHBASE_USERNAME, COUCHBASE_PASSWORD),
+            )
+    except Exception:
+        pass
 
 
 # ─── Models ──────────────────────────────────────────────────────────────────
@@ -477,7 +517,7 @@ async def start_agent(req: AgentStartRequest):
             "channel": req.channel,
             "token": agent_token,
             "agent_rtc_uid": "0",
-            "remote_rtc_uids": ["*"],
+            "remote_rtc_uids": [str(req.uid)] if ANAM_API_KEY else ["*"],
             "enable_string_uid": False,
             "idle_timeout": 180,
             "asr": {"language": asr_lang},
@@ -531,6 +571,48 @@ async def start_agent(req: AgentStartRequest):
         },
     }
 
+    # Inject Anam avatar if API key is configured
+    if ANAM_API_KEY:
+        # Map each voice_type to the closest Anam avatar by personality + appearance
+        ANAM_AVATAR_MAP = {
+            "female":         "edf6fdcb-acab-44b8-b974-ded72665ee26",  # Mia studio — warm Asian woman
+            "male":           "6cc28442-cccd-42a8-b6e4-24b7210a09c5",  # Gabriel table — calm South Asian man
+            "premium_female": "edcb8f1a-334f-4cdb-871c-5c513db806a7",  # Julia sofa — empathetic precise woman
+            "premium_male":   "d73415e3-d624-45a6-a461-0df1580e73d6",  # Leo window desk — confident East Asian man
+            "zh_female":      "bdaaedfa-00f2-417a-8239-8bb89adec682",  # Astrid desk — East Asian woman
+            "zh_male":        "ccf00c0e-7302-455b-ace2-057e0cf58127",  # Kevin table — East Asian man
+            "ms_female":      "ae2ea8c1-db28-47e3-b6ea-493e4ed3c554",  # Layla home — warm Malay woman
+            "ms_male":        "19d18eb0-5346-4d50-a77f-26b3723ed79d",  # Richard table — trustworthy Malay man
+            "ta_female":      "290ef1d5-9201-40f4-8c88-394a6317f10d",  # Evelyn desk — Tamil woman
+            "ta_male":        "8dd64886-ce4b-47d5-b837-619660854768",  # Pablo desk — South Asian man
+            "spicy_female":   "dc9aa3e1-32f2-499e-9921-ecabac1076fc",  # Bella sofa — expressive woman
+            "spicy_male":     "ecfb2ddb-80ec-4526-88a7-299a4738957c",  # Hunter table — charismatic man
+        }
+        avatar_id = ANAM_AVATAR_MAP.get((req.voice_type or "female").strip(), ANAM_AVATAR_ID)
+        avatar_uid = 2  # dedicated UID for the avatar stream
+        avatar_token = RtcTokenBuilder.buildTokenWithUid(
+            AGORA_APP_ID,
+            AGORA_APP_CERTIFICATE,
+            req.channel,
+            avatar_uid,
+            RTC_ROLE_PUBLISHER,
+            expire_time,
+        )
+        payload["properties"]["avatar"] = {
+            "vendor": "anam",
+            "enable": True,
+            "params": {
+                "api_key": ANAM_API_KEY,
+                "avatar_id": avatar_id,
+                "agora_uid": str(avatar_uid),
+                "agora_token": avatar_token,
+                "sample_rate": 24000,
+                "quality": "high",
+                "video_encoding": "H264",
+            },
+        }
+        print(f"[agent/start] Anam avatar enabled (avatar_uid={avatar_uid}, avatar_id={avatar_id}, voice_type={req.voice_type})")
+
     # Build auth header — use Basic Auth with Customer ID + Secret
     import base64
     creds = base64.b64encode(f"{AGORA_CUSTOMER_ID}:{AGORA_CUSTOMER_SECRET}".encode()).decode()
@@ -577,9 +659,43 @@ async def stop_agent(req: AgentStopRequest):
     return {"status": "stopped", "agent_id": req.agent_id}
 
 
+async def _clean_ai_summary(raw: str, patient_name: str) -> str:
+    """Use OpenAI to reformat the raw agent transcript into a clean clinical summary."""
+    if not OPENAI_API_KEY or not raw:
+        return raw
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o-mini",
+                    "max_tokens": 400,
+                    "temperature": 0,
+                    "messages": [
+                        {"role": "system", "content": (
+                            "You are a medical scribe. Given a raw AI doctor transcript excerpt, "
+                            "extract and rewrite it as a clean, structured clinical summary in 3-4 short sentences. "
+                            "Include: chief complaint, key findings, and recommended self-care advice. "
+                            "Remove all conversational filler, greetings, questions, and closing lines. "
+                            "Write in third-person clinical note style (e.g. 'Patient presents with...'). "
+                            "Do not include medication delivery options or consultation admin text."
+                        )},
+                        {"role": "user", "content": f"Patient: {patient_name}\n\nRaw transcript:\n{raw[:1500]}"}
+                    ]
+                }
+            )
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[consultation] ai_summary cleanup failed: {e}")
+    return raw
+
+
 @app.post("/consultation")
 async def create_consultation(req: ConsultationCreate):
     doc_id = str(uuid.uuid4())
+    cleaned_summary = await _clean_ai_summary(req.ai_summary, req.patient_name)
     doc = {
         "id": doc_id,
         "type": "consultation",
@@ -593,7 +709,7 @@ async def create_consultation(req: ConsultationCreate):
         "associated_symptoms": req.associated_symptoms,
         "allergies": req.allergies,
         "current_medications": req.current_medications,
-        "ai_summary": req.ai_summary,
+        "ai_summary": cleaned_summary,
         "transcript": req.transcript,
         "doctor_type": req.doctor_type,
         "voice_type": req.voice_type,
@@ -621,6 +737,15 @@ async def get_consultation(consultation_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Consultation not found")
     return doc
+
+
+@app.delete("/consultation/{consultation_id}")
+async def delete_consultation(consultation_id: str):
+    doc = await cb_get(consultation_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    await cb_delete(consultation_id)
+    return {"deleted": consultation_id}
 
 
 @app.get("/patient/consultations")

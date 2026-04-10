@@ -116,7 +116,7 @@ export default function Status() {
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-4 pb-12">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-8 space-y-4 pb-16 mt-2">
         {/* Big status hero */}
         <div className={`${cfg.bg} border ${cfg.border} rounded-2xl p-5 text-center space-y-2`}>
           <div className="text-5xl">{cfg.emoji}</div>
@@ -145,9 +145,19 @@ export default function Status() {
 
         {/* AI Summary */}
         {consultation.ai_summary && (
-          <div className="bg-card border border-card rounded-2xl p-4">
-            <h3 className="font-semibold text-white text-sm mb-2">AI Clinical Summary</h3>
-            <p className="text-slate-300 text-sm leading-relaxed">{consultation.ai_summary}</p>
+          <div className="bg-card border border-card rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <h3 className="font-semibold text-white text-sm">AI Clinical Summary</h3>
+            </div>
+            <div className="space-y-2">
+              {consultation.ai_summary.split(/(?<=[.!?])\s+/).filter(s => s.trim()).map((sentence, i) => (
+                <p key={i} className="text-slate-300 text-sm leading-relaxed flex gap-2">
+                  <span className="text-blue-500/60 shrink-0 mt-0.5">—</span>
+                  <span>{sentence.trim()}</span>
+                </p>
+              ))}
+            </div>
           </div>
         )}
 

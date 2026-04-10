@@ -114,7 +114,7 @@ export default function Consult() {
     const track = localCameraRef.current
     const el = localPipDivRef.current
     if (track && el) track.play(el)
-  }, [hasLocalVideo, showMyVideo])
+  }, [hasLocalVideo, showMyVideo, doctorView])
 
   // Replay remote video into whichever container is currently visible
   useEffect(() => {
@@ -460,7 +460,47 @@ export default function Consult() {
 
             {/* Transcript — always visible, fills remaining space */}
             <div className="flex-1 min-h-0 flex flex-col bg-[#161b22] rounded-2xl border border-white/8 overflow-hidden">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 shrink-0">
+              {/* AAP Phase indicator */}
+              {(() => {
+                const agentText = transcript.filter(m => m.role === 'agent').map(m => m.text).join(' ').toLowerCase()
+                const isDone = agentText.includes("being sent to our doctor") || agentText.includes("take care and feel better")
+                const isPrescribe = isDone
+                  || agentText.includes("would you prefer to pick it up")
+                  || agentText.includes("nearest clinic") || agentText.includes("have it delivered")
+                  || agentText.includes("here's what i'd suggest")
+                const isAddress = !isPrescribe && (
+                  agentText.includes("based on what you've told me")
+                  || agentText.includes("let me address")
+                  || agentText.includes("good picture of what")
+                )
+                const phase = isPrescribe ? 3 : isAddress ? 2 : 1
+
+                // Fulfilment sub-label for prescribe phase
+                const fulfilment = agentText.includes("nearest clinic") && agentText.includes("collection")
+                  ? '🏥 Clinic pickup'
+                  : agentText.includes("delivered to you")
+                  ? '🛵 Home delivery'
+                  : null
+
+                const phases = [
+                  { label: 'Analyse',   color: phase === 1 ? 'text-blue-400 border-blue-500/50 bg-blue-500/10'     : phase > 1 ? 'text-slate-500 border-white/8 bg-white/3' : 'text-slate-600 border-white/5 bg-transparent' },
+                  { label: 'Address',   color: phase === 2 ? 'text-violet-400 border-violet-500/50 bg-violet-500/10' : phase > 2 ? 'text-slate-500 border-white/8 bg-white/3' : 'text-slate-600 border-white/5 bg-transparent' },
+                  { label: fulfilment ?? 'Prescribe', color: phase === 3 ? 'text-emerald-400 border-emerald-500/50 bg-emerald-500/10' : 'text-slate-600 border-white/5 bg-transparent' },
+                ]
+                return (
+                  <div className="flex items-center gap-1 px-3 py-2 border-b border-white/5 shrink-0">
+                    {phases.map((p, i) => (
+                      <div key={i} className="flex items-center gap-1 flex-1">
+                        <div className={`flex-1 flex items-center justify-center px-1.5 py-1 rounded-lg border text-center transition-all duration-500 ${p.color}`}>
+                          <span className="text-[10px] font-semibold leading-tight">{p.label}</span>
+                        </div>
+                        {i < 2 && <span className="text-slate-700 text-[10px] shrink-0">›</span>}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5 shrink-0">
                 <span className="text-xs text-slate-500 font-medium">Conversation</span>
                 {transcript.length > 0 && (
                   <span className="text-[10px] text-slate-600">{transcript.filter(m => m.isFinal).length} turns</span>
