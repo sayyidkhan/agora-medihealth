@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: medivoice-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: AGORA_APP_ID
+        sync: false
+      - key: AGORA_APP_CERTIFICATE
+        sync: false
+      - key: AGORA_CUSTOMER_ID
+        sync: false
+      - key: AGORA_CUSTOMER_SECRET
+        sync: false
+      - key: AGORA_CONVO_AI_BASE_URL
+        value: https://api.agora.io
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID_MALE
+        value: pNInz6obpgDQGcFmaJgB
+      - key: ELEVENLABS_VOICE_ID_FEMALE
+        value: 21m00Tcm4TlvDq8ikWAM
+      - key: ELEVENLABS_VOICE_ID_PREMIUM_MALE
+        value: onwK4e9ZLuTAKqWW03F9
+      - key: ELEVENLABS_VOICE_ID_PREMIUM_FEMALE
+        value: pMsXgVXv3BLzUgSXRplE
+      - key: COUCHBASE_CONNECTION_STRING
+        sync: false
+      - key: COUCHBASE_USERNAME
+        sync: false
+      - key: COUCHBASE_PASSWORD
+        sync: false
+      - key: COUCHBASE_BUCKET
+        value: medivoice
+      - key: ANAM_API_KEY
+        sync: false
+      - key: ANAM_AVATAR_ID
+        value: 960f614f-ea88-47c3-9883-f02094f70874
+      - key: FRONTEND_URL
+        sync: false
