@@ -1,15 +1,54 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AgoraRTC from 'agora-rtc-sdk-ng'
-import { Mic, MicOff, PhoneOff, Stethoscope, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Stethoscope, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import axios from 'axios'
+import { getPatientSession } from '../patientSession'
 
 const API = '/api'
+
+/** Matches Landing.jsx voice ids — used for doctor portrait (agent has no video track). */
+const VOICE_META = {
+  female: { photo: '/dr-sarah.png', name: 'Dr. Sarah' },
+  male: { photo: '/dr-james.png', name: 'Dr. James' },
+  premium_female: { photo: '/dr-serena.png', name: 'Dr. Serena' },
+  premium_male: { photo: '/dr-daniel.png', name: 'Dr. Daniel' },
+  zh_female: { photo: '/dr-weilin.png', name: 'Dr. Wei Lin' },
+  zh_male: { photo: '/dr-ming.png', name: 'Dr. Ming' },
+  ms_female: { photo: '/dr-aisha.png', name: 'Dr. Aisha' },
+  ms_male: { photo: '/dr-hafiz.png', name: 'Dr. Hafiz' },
+  ta_female: { photo: '/dr-priya.png', name: 'Dr. Priya' },
+  ta_male: { photo: '/dr-arjun.png', name: 'Dr. Arjun' },
+  spicy_female: { photo: '/dr-valentina.png', name: 'Dr. Valentina' },
+  spicy_male: { photo: '/dr-rico.png', name: 'Dr. Rico' },
+}
+
+function voiceMeta(voiceType) {
+  if (!voiceType) return VOICE_META.female
+  return VOICE_META[voiceType] || VOICE_META.female
+}
+
+function formatApiError(detail) {
+  if (detail == null) return null
+  if (Array.isArray(detail)) {
+    return detail.map((d) => (typeof d === 'object' ? JSON.stringify(d) : String(d))).join('\n')
+  }
+  if (typeof detail === 'object') return JSON.stringify(detail, null, 2)
+  return String(detail)
+}
 
 export default function Consult() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { name, doctorType, voiceType, prePrompt } = location.state || {}
+  const session = getPatientSession()
+  const {
+    doctorType,
+    voiceType,
+    prePrompt,
+    symptomInputLocale,
+    symptomInputLanguage,
+  } = location.state || {}
+  const patientName = session?.name || ''
 
   const [status, setStatus] = useState('connecting') // connecting | active | ending | done
   const [muted, setMuted] = useState(false)
@@ -21,13 +60,29 @@ export default function Consult() {
   const [duration, setDuration] = useState(0)
 
   const clientRef = useRef(null)
-  const localTrackRef = useRef(null)
+  const localMicRef = useRef(null)
+  const localCameraRef = useRef(null)
+  const localPipDivRef = useRef(null)
+  const remoteDoctorVideoRef = useRef(null)
   const timerRef = useRef(null)
   const transcriptEndRef = useRef(null)
 
+  const [remoteHasVideo, setRemoteHasVideo] = useState(false)
+  const [hasLocalVideo, setHasLocalVideo] = useState(false)
+  /** Local camera preview + publish; false = video off (not sent, PiP hidden). */
+  const [showMyVideo, setShowMyVideo] = useState(true)
+
   useEffect(() => {
-    if (!name) {
-      navigate('/')
+    if (!session) {
+      navigate('/login', { replace: true })
+      return
+    }
+    if (!patientName) {
+      navigate('/login', { replace: true })
+      return
+    }
+    if (!prePrompt?.trim() || !doctorType) {
+      navigate('/', { replace: true })
       return
     }
     startSession()
@@ -44,6 +99,13 @@ export default function Consult() {
     }
     return () => clearInterval(timerRef.current)
   }, [status])
+
+  useEffect(() => {
+    if (!hasLocalVideo || !showMyVideo) return
+    const track = localCameraRef.current
+    const el = localPipDivRef.current
+    if (track && el) track.play(el)
+  }, [hasLocalVideo, showMyVideo])
 
   const formatDuration = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
@@ -76,22 +138,45 @@ export default function Consult() {
         if (mediaType === 'audio') {
           user.audioTrack.play()
         }
+        if (mediaType === 'video' && user.videoTrack) {
+          setRemoteHasVideo(true)
+          const el = remoteDoctorVideoRef.current
+          if (el) {
+            user.videoTrack.play(el)
+          }
+        }
       })
 
       await client.join(app_id, channelName, token, userUid)
 
       const micTrack = await AgoraRTC.createMicrophoneAudioTrack()
-      localTrackRef.current = micTrack
-      await client.publish(micTrack)
+      localMicRef.current = micTrack
+
+      let cameraTrack = null
+      try {
+        cameraTrack = await AgoraRTC.createCameraVideoTrack({
+          encoderConfig: '480p_1',
+          facingMode: 'user',
+        })
+        localCameraRef.current = cameraTrack
+      } catch (camErr) {
+        console.warn('Camera unavailable (demo will be audio-only for your video):', camErr)
+      }
+
+      if (cameraTrack) setHasLocalVideo(true)
+
+      await client.publish(cameraTrack ? [micTrack, cameraTrack] : micTrack)
 
       // Start AI agent
       const agentRes = await axios.post(`${API}/agent/start`, {
         channel: channelName,
         uid: userUid,
-        patient_name: name,
+        patient_name: patientName,
         pre_prompt: prePrompt,
         doctor_type: doctorType,
         voice_type: voiceType,
+        symptom_input_locale: symptomInputLocale || null,
+        symptom_input_language: symptomInputLanguage || null,
       })
 
       setAgentId(agentRes.data?.agent_id || agentRes.data?.name || 'agent')
@@ -104,7 +189,8 @@ export default function Consult() {
       }])
     } catch (err) {
       console.error(err)
-      setError(err?.response?.data?.detail || err.message || 'Failed to connect. Please try again.')
+      const detail = err?.response?.data?.detail
+      setError(formatApiError(detail) || err.message || 'Failed to connect. Please try again.')
       setStatus('error')
     }
   }
@@ -128,15 +214,19 @@ export default function Consult() {
         .filter(t => t.role === 'agent')
         .slice(-3)
         .map(t => t.text)
-        .join(' ') || `Patient ${name} consulted for: ${prePrompt}`
+        .join(' ') || `Patient ${patientName} consulted for: ${prePrompt}`
 
       const consultRes = await axios.post(`${API}/consultation`, {
-        patient_name: name,
+        patient_name: patientName,
+        patient_id: session?.id || null,
         channel: channel || '',
         chief_complaint: prePrompt,
         ai_summary: summary,
         transcript: fullTranscript,
         doctor_type: doctorType,
+        voice_type: voiceType || null,
+        symptom_input_locale: symptomInputLocale || null,
+        symptom_input_language: symptomInputLanguage || null,
       })
 
       await cleanup()
@@ -150,29 +240,43 @@ export default function Consult() {
 
   async function cleanup() {
     try {
-      localTrackRef.current?.stop()
-      localTrackRef.current?.close()
+      localMicRef.current?.stop()
+      localMicRef.current?.close()
+      localCameraRef.current?.stop()
+      localCameraRef.current?.close()
+      localMicRef.current = null
+      localCameraRef.current = null
       await clientRef.current?.leave()
     } catch {}
   }
 
   function toggleMute() {
-    if (localTrackRef.current) {
-      if (muted) {
-        localTrackRef.current.setEnabled(true)
-      } else {
-        localTrackRef.current.setEnabled(false)
-      }
+    if (localMicRef.current) {
+      localMicRef.current.setEnabled(muted)
       setMuted(!muted)
     }
   }
 
+  function toggleMyVideo() {
+    const track = localCameraRef.current
+    if (!track) return
+    setShowMyVideo((on) => {
+      const next = !on
+      track.setEnabled(next)
+      return next
+    })
+  }
+
   const [showTranscript, setShowTranscript] = useState(false)
 
-  if (!name) return null
+  const doctor = voiceMeta(voiceType)
+
+  if (!patientName) return null
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-lg mx-auto">
+    <div className="h-dvh w-full bg-[#0d1117] flex flex-col overflow-hidden">
+    <div className="grid min-h-0 flex-1 w-full grid-cols-1 [grid-template-rows:minmax(0,1fr)] justify-items-center">
+    <div className="flex h-full min-h-0 w-full max-w-lg flex-col">
 
       {/* Status bar */}
       <div className={`h-1 w-full transition-all ${
@@ -206,32 +310,56 @@ export default function Consult() {
         </div>
       </header>
 
-      {/* Doctor Avatar — takes most of the screen */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 gap-4">
+      {/* Doctor portrait / remote video + local PiP */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 gap-4 min-h-0">
         {error ? (
-          <div className="w-full bg-red-500/20 border border-red-500/30 rounded-2xl p-5 text-red-300 text-center">
-            <p className="font-semibold mb-1">Connection Error</p>
-            <p className="text-sm">{error}</p>
+          <div className="w-full bg-red-500/20 border border-red-500/30 rounded-2xl p-5 text-red-300 text-left">
+            <p className="font-semibold mb-2 text-center">Connection Error</p>
+            <p className="text-sm text-red-200/95 whitespace-pre-wrap break-words max-h-[min(50vh,320px)] overflow-y-auto leading-relaxed">{error}</p>
             <button onClick={() => navigate('/')} className="mt-4 bg-white/10 px-5 py-2 rounded-xl text-white text-sm">Go Back</button>
           </div>
         ) : (
           <>
-            {/* Pulsing avatar */}
-            <div className="relative">
+            <div
+              className={`relative w-full max-w-[min(100%,280px)] aspect-[3/4] rounded-2xl overflow-hidden bg-slate-900 shadow-2xl shadow-blue-950/40 border border-white/10 shrink-0 ${
+                status === 'connecting' ? 'opacity-70' : ''
+              }`}
+            >
               {status === 'active' && (
-                <>
-                  <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping scale-125" />
-                  <div className="absolute inset-0 rounded-full bg-blue-500/10 animate-ping scale-150 animation-delay-150" />
-                </>
+                <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-blue-500/15 animate-pulse z-0" aria-hidden />
               )}
-              <div className={`relative w-32 h-32 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center text-6xl shadow-2xl shadow-blue-900/50 ${status === 'connecting' ? 'opacity-50' : ''}`}>
-                {voiceType?.includes('female') ? '👩‍⚕️' : '👨‍⚕️'}
+              <img
+                src={doctor.photo}
+                alt=""
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+                  remoteHasVideo ? 'opacity-0' : 'opacity-100'
+                }`}
+              />
+              <div
+                ref={remoteDoctorVideoRef}
+                className={`absolute inset-0 z-[1] h-full w-full bg-black transition-opacity duration-300 ${
+                  remoteHasVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-3 pt-10">
+                <p className="text-white font-semibold text-base leading-tight">{doctor.name}</p>
+                <p className="text-slate-300 text-xs mt-0.5">{doctorType}</p>
               </div>
+              {hasLocalVideo && showMyVideo && (
+                <div className="absolute top-2 right-2 z-[3] w-[30%] min-w-[76px] max-w-[120px] aspect-[3/4] overflow-hidden rounded-xl border-2 border-white/35 bg-slate-800 shadow-lg">
+                  <div ref={localPipDivRef} className="h-full w-full" />
+                  <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/50 px-1 py-0.5 text-[10px] font-medium text-white">
+                    You
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="text-center">
-              <h2 className="text-white font-bold text-xl">AI {doctorType}</h2>
-              <p className="text-slate-400 text-sm mt-0.5">Consulting {name}</p>
+              <h2 className="text-white font-bold text-lg">{doctor.name}</h2>
+              <p className="text-slate-400 text-sm mt-0.5">
+                Consulting <span className="text-slate-300">{patientName}</span>
+              </p>
               {status === 'connecting' && (
                 <div className="flex items-center justify-center gap-2 mt-3 text-yellow-400 text-sm">
                   <Loader2 size={14} className="animate-spin" />
@@ -280,13 +408,16 @@ export default function Consult() {
         )}
       </div>
 
-      {/* Fixed bottom controls */}
-      <div className="px-6 pb-10 pt-4 border-t border-card">
+      {/* Bottom controls */}
+      <div className="shrink-0 px-6 pb-10 pt-4 border-t border-card">
         <div className="flex items-center justify-center gap-8">
-          {/* Mute */}
+          {/* Mute mic */}
           <button
+            type="button"
             onClick={toggleMute}
             disabled={status !== 'active'}
+            aria-pressed={muted}
+            title={muted ? 'Unmute microphone' : 'Mute microphone'}
             className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-30 ${
               muted ? 'bg-red-500/20 border-2 border-red-500 text-red-400' : 'bg-card border-2 border-card text-white'
             }`}
@@ -296,18 +427,41 @@ export default function Consult() {
 
           {/* End call */}
           <button
+            type="button"
             onClick={endSession}
             disabled={status !== 'active'}
+            title="End call"
             className="w-20 h-20 rounded-full bg-red-600 active:bg-red-700 flex items-center justify-center shadow-xl shadow-red-900/50 transition-all active:scale-95 disabled:opacity-30"
           >
             <PhoneOff size={28} className="text-white" />
           </button>
 
-          {/* Spacer to balance layout */}
-          <div className="w-14" />
+          {/* Camera on/off (only when a camera track exists) */}
+          <button
+            type="button"
+            onClick={toggleMyVideo}
+            disabled={status !== 'active' || !hasLocalVideo}
+            aria-pressed={showMyVideo}
+            title={
+              !hasLocalVideo
+                ? 'No camera'
+                : showMyVideo
+                  ? 'Turn off camera'
+                  : 'Turn on camera'
+            }
+            className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-30 ${
+              !showMyVideo ? 'bg-amber-500/20 border-2 border-amber-500/60 text-amber-300' : 'bg-card border-2 border-card text-white'
+            }`}
+          >
+            {!showMyVideo ? <VideoOff size={20} /> : <Video size={20} />}
+          </button>
         </div>
-        <p className="text-center text-xs text-slate-600 mt-3">Tap the red button to end & submit for review</p>
+        <p className="text-center text-xs text-slate-600 mt-3">
+          Mic and camera toggles · Tap red to end & submit for review
+        </p>
       </div>
+    </div>
+    </div>
     </div>
   )
 }

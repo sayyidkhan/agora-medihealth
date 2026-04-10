@@ -92,7 +92,7 @@ export default function DoctorCase() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+      <div className="h-dvh w-full bg-[#0d1117] flex items-center justify-center">
         <Loader2 size={36} className="animate-spin text-blue-400" />
       </div>
     )
@@ -100,7 +100,7 @@ export default function DoctorCase() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center p-6 gap-5">
+      <div className="h-dvh w-full bg-[#0d1117] flex flex-col items-center justify-center p-6 gap-5">
         <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
           <CheckCircle size={44} className="text-green-400" />
         </div>
@@ -117,7 +117,9 @@ export default function DoctorCase() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-lg mx-auto">
+    <div className="h-dvh w-full bg-[#0d1117] flex flex-col overflow-hidden">
+    <div className="grid min-h-0 flex-1 w-full grid-cols-1 [grid-template-rows:minmax(0,1fr)] justify-items-center">
+    <div className="flex h-full min-h-0 w-full max-w-lg flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-4 border-b border-card sticky top-0 bg-[#0d1117] z-10">
         <button onClick={() => navigate('/doctor/dashboard')} className="flex items-center gap-2 text-slate-400 text-sm">
@@ -135,7 +137,7 @@ export default function DoctorCase() {
       </header>
 
       {/* Scrollable content — padded bottom so sticky bar doesn't cover */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-36">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3 pb-36">
 
         {/* Patient header */}
         <div className="bg-card border border-card rounded-xl p-4">
@@ -270,7 +272,7 @@ export default function DoctorCase() {
 
       {/* Sticky bottom actions — only for pending */}
       {consultation?.status === 'pending' && (
-        <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto px-4 pb-8 pt-4 bg-[#0d1117] border-t border-card">
+        <div className="shrink-0 px-4 pb-8 pt-4 bg-[#0d1117] border-t border-card">
           <div className="flex gap-3">
             <button
               onClick={handleEscalate}
@@ -290,6 +292,8 @@ export default function DoctorCase() {
           </div>
         </div>
       )}
+    </div>
+    </div>
     </div>
   )
 }

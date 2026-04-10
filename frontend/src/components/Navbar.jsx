@@ -50,7 +50,7 @@ export default function Navbar() {
             Doctor Login
           </Link>
           <Link
-            to="/consult"
+            to="/login"
             className="text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold px-4 py-2 rounded-xl transition-all shadow-lg hover:shadow-blue-500/30"
           >
             Try Now →
@@ -80,7 +80,7 @@ export default function Navbar() {
             </a>
           ))}
           <Link
-            to="/consult"
+            to="/login"
             onClick={() => setMenuOpen(false)}
             className="block text-center text-sm bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold px-4 py-3 rounded-xl mt-2"
           >

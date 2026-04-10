@@ -17,24 +17,34 @@
 .input-base:focus { border-color: #3b82f6; }
 .input-base::placeholder { color: #64748b; }
 
+/**
+ * Do not zero padding on * — it runs after Tailwind and wipes py-/px- on inputs.
+ * Divs/sections have no default padding; form controls need real padding.
+ */
 * {
   box-sizing: border-box;
   margin: 0;
-  padding: 0;
 }
 
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  min-width: 0;
 }
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
   background: #0d1117;
   color: #f1f5f9;
+  width: 100%;
+  min-width: 0;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  min-width: 0;
 }
 
 /* Landing page gradient utilities */

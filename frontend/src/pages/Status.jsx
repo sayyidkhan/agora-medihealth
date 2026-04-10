@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
 import { CheckCircle, Clock, AlertTriangle, Download, Pill, ArrowLeft, Loader2, RefreshCw, Phone } from 'lucide-react'
 import axios from 'axios'
 
@@ -71,7 +71,7 @@ export default function Status() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+      <div className="h-dvh w-full bg-[#0d1117] flex items-center justify-center">
         <Loader2 size={36} className="animate-spin text-blue-400" />
       </div>
     )
@@ -79,7 +79,7 @@ export default function Status() {
 
   if (!consultation) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center p-6 text-center gap-4">
+      <div className="h-dvh w-full bg-[#0d1117] flex flex-col items-center justify-center p-6 text-center gap-4">
         <p className="text-slate-400">Consultation not found.</p>
         <button onClick={() => navigate('/')} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm">Go Home</button>
       </div>
@@ -90,24 +90,33 @@ export default function Status() {
   const StatusIcon = cfg.icon
 
   return (
-    <div className="min-h-screen bg-[#0d1117]">
+    <div className="h-dvh w-full bg-[#0d1117] flex flex-col overflow-hidden">
+    <div className="grid min-h-0 flex-1 w-full grid-cols-1 [grid-template-rows:minmax(0,1fr)] justify-items-center">
+    <div className="flex h-full min-h-0 w-full max-w-lg flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-card sticky top-0 bg-[#0d1117] z-10">
-        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 active:text-white transition-colors">
+      <header className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-card bg-[#0d1117] z-10 gap-2">
+        <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 active:text-white transition-colors shrink-0">
           <ArrowLeft size={18} />
           <span className="text-sm">Home</span>
         </button>
-        {consultation.status === 'pending' && (
-          <button
-            onClick={() => { setRefreshing(true); fetchConsultation() }}
-            className="text-slate-400 p-1.5"
-          >
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <Link to="/my-records" className="text-[11px] font-medium text-blue-400 px-2.5 py-1.5 rounded-lg border border-blue-500/25 bg-blue-500/10">
+            My MCs
+          </Link>
+          {consultation.status === 'pending' && (
+            <button
+              type="button"
+              onClick={() => { setRefreshing(true); fetchConsultation() }}
+              className="text-slate-400 p-1.5 rounded-lg border border-white/10 hover:bg-white/5"
+              title="Refresh status"
+            >
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            </button>
+          )}
+        </div>
       </header>
 
-      <div className="px-4 py-6 max-w-lg mx-auto space-y-4 pb-12">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-4 pb-12">
         {/* Big status hero */}
         <div className={`${cfg.bg} border ${cfg.border} rounded-2xl p-5 text-center space-y-2`}>
           <div className="text-5xl">{cfg.emoji}</div>
@@ -199,6 +208,8 @@ export default function Status() {
           Start New Consultation
         </button>
       </div>
+    </div>
+    </div>
     </div>
   )
 }

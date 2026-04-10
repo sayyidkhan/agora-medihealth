@@ -35,14 +35,16 @@ export default function DoctorLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-sm mx-auto">
-      <header className="px-5 py-4">
+    <div className="h-dvh w-full bg-[#0d1117] flex flex-col overflow-hidden">
+      <div className="grid min-h-0 flex-1 w-full grid-cols-1 [grid-template-rows:minmax(0,1fr)] justify-items-center">
+        <div className="flex h-full min-h-0 w-full max-w-sm flex-col">
+      <header className="shrink-0 px-5 py-4">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 text-sm">
           <ArrowLeft size={16} /> Patient App
         </button>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8 overflow-y-auto">
         {/* Icon + title */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto shadow-xl shadow-blue-900/50">
@@ -84,6 +86,8 @@ export default function DoctorLogin() {
         </div>
 
         <p className="text-slate-600 text-xs">Demo PIN: <span className="text-slate-500">1234</span></p>
+      </div>
+        </div>
       </div>
     </div>
   )

@@ -39,7 +39,9 @@ export default function DoctorDashboard() {
   const filtered = consultations.filter(c => c.status === tab)
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-lg mx-auto">
+    <div className="h-dvh w-full bg-[#0d1117] flex flex-col overflow-hidden">
+    <div className="grid min-h-0 flex-1 w-full grid-cols-1 [grid-template-rows:minmax(0,1fr)] justify-items-center">
+    <div className="flex h-full min-h-0 w-full max-w-lg flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-4 border-b border-card sticky top-0 bg-[#0d1117] z-10">
         <div className="flex items-center gap-2.5">
@@ -102,7 +104,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 pb-8">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-slate-500 text-sm gap-2">
             <RefreshCw size={16} className="animate-spin" /> Loading…
@@ -144,6 +146,8 @@ export default function DoctorDashboard() {
           })
         )}
       </div>
+    </div>
+    </div>
     </div>
   )
 }
