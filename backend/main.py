@@ -97,38 +97,24 @@ def asr_language_from_symptom_locale(locale: Optional[str]) -> str:
     return "en-US"
 
 
-CLINICAL_SYSTEM_PROMPT = """You are MediVoice, a compassionate and professional AI medical assistant conducting a clinical interview.
-Your role is to collect symptom information to help a licensed doctor make an informed decision about the patient's care.
+CLINICAL_SYSTEM_PROMPT = """You are MediVoice, a compassionate AI medical assistant doing a voice symptom intake.
 
-IMPORTANT RULES:
-1. You are NOT a doctor and cannot diagnose or prescribe. Always clarify this warmly.
-2. Anchor everything to what the patient actually said — especially anything they typed before the call. Do not ignore their initial complaint or give a generic interview.
-3. Your first spoken turn (after greeting) must: (a) reflect their specific concern in your own words so they feel heard, (b) offer brief, sensible general guidance tied to that concern — e.g. rest, fluids, simple self-care, what symptoms would mean they should seek urgent care — framed as general information, not a diagnosis, (c) then ask ONE clear follow-up question.
-4. Conduct a structured interview — after that first turn, ask ONE question at a time and wait for the response.
-5. Keep questions concise and use plain language (not medical jargon).
-6. Be warm, calm, and reassuring throughout.
-7. RED FLAGS — if the patient mentions any of the following, IMMEDIATELY stop the interview, advise them to call 995 or go to A&E, and end the session:
-   - Chest pain or tightness
-   - Difficulty breathing or shortness of breath
-   - Sudden severe headache ("worst headache of my life")
-   - Stroke symptoms (face drooping, arm weakness, speech difficulty)
-   - Suicidal thoughts or self-harm
-   - High fever (>39°C) in a child under 2 years old
-   - Unresponsiveness or altered consciousness
-8. After collecting all necessary information, summarize the consultation clearly and tell the patient their case is being sent to a doctor for review.
+RULES:
+- You are NOT a doctor. Never diagnose or prescribe.
+- ALWAYS respond in ONE short message — 1 to 3 sentences max. Never split a response across multiple turns.
+- Ask only ONE question per turn. Wait for the patient to answer before asking the next.
+- Be warm, plain-spoken, and brief. No bullet points, no lists — this is a voice call.
+- If the patient mentions chest pain, difficulty breathing, stroke symptoms, or is unresponsive — immediately tell them to call 995 or go to A&E.
+- After gathering enough info, summarize briefly and say their case is being sent to a doctor for review.
 
-INTERVIEW STRUCTURE (follow this order; skip steps already answered):
-1. Greet the patient by name; address their stated complaint with tailored general guidance + one focused question (see rule 3).
-2. Chief complaint — confirm and expand only if not already clear from their initial message.
-3. Duration (how long have they had this?)
-4. Severity (1-10 scale) where relevant
-5. Associated symptoms (fever, cough, runny nose, vomiting, diarrhoea, rash, etc.)
-6. Any known allergies
-7. Current medications
-8. Thermometer reading if fever suspected
-9. Summarize findings and close the consultation warmly
-
-CLOSING: End with "Thank you for sharing that with me. I've summarized your consultation and it's being sent to our doctor for review. You'll be notified once they've made a decision. Please rest well and stay hydrated."
+INTERVIEW ORDER (skip what the patient already answered):
+1. Greet by name, acknowledge their complaint, ask ONE clarifying question.
+2. Duration
+3. Severity (1-10)
+4. Other symptoms
+5. Allergies
+6. Current medications
+7. Close warmly — "I've got what I need. Your case is being sent to our doctor for review."
 """
 
 # ─── In-memory store + Couchbase via REST API ────────────────────────────────
@@ -363,13 +349,30 @@ def generate_token(req: TokenRequest):
     return {"token": token, "channel": req.channel, "uid": req.uid, "app_id": AGORA_APP_ID}
 
 
+# OpenAI TTS voice mapping (same as agent) — used for landing-page previews
+OPENAI_PREVIEW_VOICE_MAP = {
+    "female": "coral",
+    "male": "verse",
+    "premium_female": "sage",
+    "premium_male": "onyx",
+    "zh_female": "coral",
+    "zh_male": "verse",
+    "ms_female": "coral",
+    "ms_male": "verse",
+    "ta_female": "coral",
+    "ta_male": "verse",
+    "spicy_female": "shimmer",
+    "spicy_male": "echo",
+}
+
+
 @app.post("/tts/preview")
 async def tts_preview(req: TtsPreviewRequest):
-    """Stream a short ElevenLabs clip for the landing-page doctor voice previews (same IDs as Convo AI)."""
-    if not ELEVENLABS_API_KEY:
+    """Preview doctor voice using OpenAI TTS for the landing-page doctor voice cards."""
+    if not OPENAI_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="ELEVENLABS_API_KEY is not configured. Add it to .env and restart the backend.",
+            detail="OPENAI_API_KEY is not configured.",
         )
     text = (req.text or "").strip()
     if not text:
@@ -379,40 +382,29 @@ async def tts_preview(req: TtsPreviewRequest):
             status_code=400,
             detail=f"text must be at most {TTS_PREVIEW_MAX_CHARS} characters",
         )
-    voice_id = resolve_elevenlabs_voice_id(req.voice_type)
-    lang_code = tts_preview_language_code(req.voice_type)
-    # Flash matches Agora live agent for en; multilingual + language_code fixes silent/broken CJK previews.
-    model_id = ELEVENLABS_PREVIEW_I18N_MODEL if lang_code else ELEVENLABS_TTS_MODEL
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-    payload: dict = {"text": text, "model_id": model_id}
-    if lang_code:
-        payload["language_code"] = lang_code
+    voice = OPENAI_PREVIEW_VOICE_MAP.get((req.voice_type or "female").strip(), "coral")
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                url,
-                params={"output_format": ELEVENLABS_PREVIEW_OUTPUT_FORMAT},
+                "https://api.openai.com/v1/audio/speech",
                 headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Accept": "audio/mpeg",
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
                     "Content-Type": "application/json",
                 },
-                json=payload,
+                json={
+                    "model": "tts-1",
+                    "input": text,
+                    "voice": voice,
+                    "response_format": "mp3",
+                },
             )
     except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Could not reach ElevenLabs: {exc}",
-        ) from exc
+        raise HTTPException(status_code=502, detail=f"Could not reach OpenAI TTS: {exc}") from exc
     if resp.status_code != 200:
+        print(f"[tts/preview] OpenAI TTS error {resp.status_code}: {resp.text[:500]}")
         raise HTTPException(
             status_code=502,
-            detail=(resp.text or "")[:500] or f"ElevenLabs HTTP {resp.status_code}",
-        )
-    if not resp.content or len(resp.content) < 64:
-        raise HTTPException(
-            status_code=502,
-            detail="ElevenLabs returned empty audio — check voice_id, quota, and model access.",
+            detail=(resp.text or "")[:500] or f"OpenAI TTS HTTP {resp.status_code}",
         )
     return Response(content=resp.content, media_type="audio/mpeg")
 
@@ -432,13 +424,22 @@ async def start_agent(req: AgentStartRequest):
             status_code=500,
             detail="OPENAI_API_KEY is not set. Agora's agent needs it for the LLM (BYOK).",
         )
-    if not ELEVENLABS_API_KEY:
-        raise HTTPException(
-            status_code=500,
-            detail="ELEVENLABS_API_KEY is not set. Agora's agent needs it for TTS (BYOK).",
-        )
-
-    voice_id = resolve_elevenlabs_voice_id(req.voice_type)
+    # Map voice_type to OpenAI TTS voice
+    openai_voice_map = {
+        "female": "coral",
+        "male": "verse",
+        "premium_female": "sage",
+        "premium_male": "onyx",
+        "zh_female": "coral",
+        "zh_male": "verse",
+        "ms_female": "coral",
+        "ms_male": "verse",
+        "ta_female": "coral",
+        "ta_male": "verse",
+        "spicy_female": "shimmer",
+        "spicy_male": "echo",
+    }
+    openai_voice = openai_voice_map.get((req.voice_type or "female").strip(), "coral")
 
     # Token for agent (auto-assigned UID using "0")
     expire_time = int(time.time()) + 3600
@@ -476,8 +477,7 @@ async def start_agent(req: AgentStartRequest):
             "channel": req.channel,
             "token": agent_token,
             "agent_rtc_uid": "0",
-            # Convo AI currently allows only one subscriber UID (not "*"). Must match the patient RTC uid.
-            "remote_rtc_uids": [str(req.uid)],
+            "remote_rtc_uids": ["*"],
             "enable_string_uid": False,
             "idle_timeout": 180,
             "asr": {"language": asr_lang},
@@ -487,10 +487,7 @@ async def start_agent(req: AgentStartRequest):
                 "api_key": OPENAI_API_KEY,
                 "system_messages": [{"role": "system", "content": system_prompt}],
                 # Without greeting_message the agent often waits forever for speech; patient hears nothing first.
-                "greeting_message": (
-                    "Hello {{user_name}}, this is MediVoice. I've read what you shared about your symptoms. "
-                    "Let's talk it through — please tell me in your own words how you're feeling right now."
-                ),
+                "greeting_message": "Hi {{user_name}}, I'm MediVoice. I've seen your message about your symptoms — let's go through them together. Can you describe how you're feeling right now?",
                 "greeting_configs": {"mode": "single_first"},
                 "template_variables": {"user_name": req.patient_name or "there"},
                 "failure_message": "I'm sorry, I'm having a technical issue. Please end the call and try again.",
@@ -501,14 +498,15 @@ async def start_agent(req: AgentStartRequest):
                     "temperature": 0.7,
                 },
             },
-            # ElevenLabs: Conversational AI expects params.key (not api_key). See Agora ElevenLabs TTS docs.
+            # OpenAI TTS BYOK — reliable, same key already used for LLM
             "tts": {
-                "vendor": "elevenlabs",
+                "vendor": "openai",
                 "params": {
-                    "key": ELEVENLABS_API_KEY,
-                    "voice_id": voice_id,
-                    "model_id": ELEVENLABS_TTS_MODEL,
-                    "sample_rate": 24000,
+                    "base_url": "https://api.openai.com/v1",
+                    "api_key": OPENAI_API_KEY,
+                    "model": "gpt-4o-mini-tts",
+                    "voice": openai_voice,
+                    "speed": 1.0,
                 },
             },
             # Prefer current turn_detection over deprecated top-level vad (fixes stuck / no-response turns).
@@ -548,12 +546,15 @@ async def start_agent(req: AgentStartRequest):
                     "Authorization": auth_header,
                 },
             )
+            print(f"[agent/start] Agora response status: {resp.status_code}")
+            print(f"[agent/start] Agora response body: {resp.text[:2000]}")
             if resp.status_code not in (200, 201):
                 raise HTTPException(
                     status_code=502,
                     detail=_format_agora_convo_join_error(resp),
                 )
             data = resp.json()
+            print(f"[agent/start] agent_id={data.get('agent_id')} name={agent_name}")
             data["_agent_name"] = agent_name
             return data
     except httpx.RequestError as e:

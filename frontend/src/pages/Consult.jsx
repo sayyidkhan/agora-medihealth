@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AgoraRTC from 'agora-rtc-sdk-ng'
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Stethoscope, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { AgoraVoiceAI, AgoraVoiceAIEvents, CovSubRenderController, TurnStatus } from 'agora-agent-client-toolkit'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Stethoscope, Loader2 } from 'lucide-react'
 import axios from 'axios'
 import { getPatientSession } from '../patientSession'
 
@@ -63,14 +64,20 @@ export default function Consult() {
   const localMicRef = useRef(null)
   const localCameraRef = useRef(null)
   const localPipDivRef = useRef(null)
-  const remoteDoctorVideoRef = useRef(null)
+  const remoteDoctorVideoRef = useRef(null)      // compact view container
+  const remoteDoctorVideoFullRef = useRef(null)  // fullscreen view container
+  const remoteVideoTrackRef = useRef(null)        // the actual agora video track
   const timerRef = useRef(null)
   const transcriptEndRef = useRef(null)
+  const voiceAIRef = useRef(null)
+  const sessionStartedRef = useRef(false)
 
   const [remoteHasVideo, setRemoteHasVideo] = useState(false)
   const [hasLocalVideo, setHasLocalVideo] = useState(false)
   /** Local camera preview + publish; false = video off (not sent, PiP hidden). */
   const [showMyVideo, setShowMyVideo] = useState(true)
+  /** true = full-screen doctor portrait, false = compact header + transcript */
+  const [doctorView, setDoctorView] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -85,6 +92,8 @@ export default function Consult() {
       navigate('/', { replace: true })
       return
     }
+    if (sessionStartedRef.current) return
+    sessionStartedRef.current = true
     startSession()
     return () => cleanup()
   }, [])
@@ -107,6 +116,14 @@ export default function Consult() {
     if (track && el) track.play(el)
   }, [hasLocalVideo, showMyVideo])
 
+  // Replay remote video into whichever container is currently visible
+  useEffect(() => {
+    const track = remoteVideoTrackRef.current
+    if (!track || !remoteHasVideo) return
+    const el = doctorView ? remoteDoctorVideoFullRef.current : remoteDoctorVideoRef.current
+    if (el) track.play(el)
+  }, [doctorView, remoteHasVideo])
+
   const formatDuration = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
   async function startSession() {
@@ -121,29 +138,53 @@ export default function Consult() {
       const { token, app_id } = tokenRes.data
 
       // Join Agora RTC
-      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' })
+      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'h264' })
       clientRef.current = client
 
-      client.on('stream-message', (uid, msg) => {
-        try {
-          const data = JSON.parse(new TextDecoder().decode(msg))
-          if (data.type === 'transcript') {
-            setTranscript(prev => [...prev, { role: data.role, text: data.text, ts: Date.now() }])
+      // Tell toolkit which UID is the local user so it can distinguish agent vs patient
+      CovSubRenderController.self_uid = userUid
+
+      // Initialize AgoraVoiceAI toolkit for live transcript (RTC data stream, no RTM needed)
+      const ai = await AgoraVoiceAI.init({ rtcEngine: client, enableLog: false })
+      voiceAIRef.current = ai
+
+      ai.on(AgoraVoiceAIEvents.TRANSCRIPT_UPDATED, (messages) => {
+        // messages: TranscriptHelperItem[] — uid is the RTC uid string, text is spoken text
+        // status: TurnStatus.IN_PROGRESS=0, END=1, INTERRUPTED=2
+        // Group by turn_id so the agent's streamed chunks merge into one bubble
+        const turnMap = new Map()
+        for (const m of messages) {
+          const role = String(m.uid) === String(userUid) ? 'user' : 'agent'
+          const key = `${role}-${m.turn_id}`
+          const existing = turnMap.get(key)
+          if (existing) {
+            // Append text if different, keep latest status
+            const combined = existing.text.endsWith(m.text) ? existing.text : existing.text + (m.text ? ' ' + m.text : '')
+            turnMap.set(key, { ...existing, text: combined, isFinal: m.status !== TurnStatus.IN_PROGRESS ? true : existing.isFinal })
+          } else {
+            turnMap.set(key, {
+              role,
+              text: m.text,
+              isFinal: m.status !== TurnStatus.IN_PROGRESS,
+              ts: m._time || Date.now(),
+            })
           }
-        } catch {}
+        }
+        setTranscript(Array.from(turnMap.values()))
       })
 
       client.on('user-published', async (user, mediaType) => {
+        // Never subscribe to our own published tracks — causes echo
+        if (user.uid === userUid) return
         await client.subscribe(user, mediaType)
         if (mediaType === 'audio') {
           user.audioTrack.play()
         }
         if (mediaType === 'video' && user.videoTrack) {
+          remoteVideoTrackRef.current = user.videoTrack
           setRemoteHasVideo(true)
           const el = remoteDoctorVideoRef.current
-          if (el) {
-            user.videoTrack.play(el)
-          }
+          if (el) user.videoTrack.play(el)
         }
       })
 
@@ -179,14 +220,13 @@ export default function Consult() {
         symptom_input_language: symptomInputLanguage || null,
       })
 
-      setAgentId(agentRes.data?.agent_id || agentRes.data?.name || 'agent')
-      setStatus('active')
+      const resolvedAgentId = agentRes.data?.agent_id || agentRes.data?.name || 'agent'
+      setAgentId(resolvedAgentId)
 
-      setTranscript([{
-        role: 'system',
-        text: `Connected to MediVoice AI — ${doctorType}. Speak naturally, the doctor is listening.`,
-        ts: Date.now(),
-      }])
+      // Subscribe to transcript stream — must be called after agent has joined
+      ai.subscribeMessage(channelName)
+
+      setStatus('active')
     } catch (err) {
       console.error(err)
       const detail = err?.response?.data?.detail
@@ -246,6 +286,8 @@ export default function Consult() {
       localCameraRef.current?.close()
       localMicRef.current = null
       localCameraRef.current = null
+      voiceAIRef.current?.destroy()
+      voiceAIRef.current = null
       await clientRef.current?.leave()
     } catch {}
   }
@@ -266,8 +308,6 @@ export default function Consult() {
       return next
     })
   }
-
-  const [showTranscript, setShowTranscript] = useState(false)
 
   const doctor = voiceMeta(voiceType)
 
@@ -310,100 +350,150 @@ export default function Consult() {
         </div>
       </header>
 
-      {/* Doctor portrait / remote video + local PiP */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 gap-4 min-h-0">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col px-4 py-3 gap-3 min-h-0 overflow-hidden">
         {error ? (
           <div className="w-full bg-red-500/20 border border-red-500/30 rounded-2xl p-5 text-red-300 text-left">
             <p className="font-semibold mb-2 text-center">Connection Error</p>
             <p className="text-sm text-red-200/95 whitespace-pre-wrap break-words max-h-[min(50vh,320px)] overflow-y-auto leading-relaxed">{error}</p>
             <button onClick={() => navigate('/')} className="mt-4 bg-white/10 px-5 py-2 rounded-xl text-white text-sm">Go Back</button>
           </div>
+        ) : doctorView ? (
+          /* ── Full-screen doctor view ── tap anywhere to go back to transcript */
+          <div
+            className="flex-1 relative rounded-2xl overflow-hidden bg-slate-900 border border-white/10 cursor-pointer"
+            onClick={() => setDoctorView(false)}
+            title="Tap to show transcript"
+          >
+            {status === 'active' && (
+              <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-blue-500/15 animate-pulse z-0" aria-hidden />
+            )}
+            <img
+              src={doctor.photo}
+              alt=""
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+                remoteHasVideo ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+            <div
+              ref={remoteDoctorVideoFullRef}
+              className={`absolute inset-0 z-[1] h-full w-full bg-black transition-opacity duration-300 ${
+                remoteHasVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            />
+            {/* Name overlay */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/80 via-black/30 to-transparent px-4 pb-4 pt-12">
+              <p className="text-white font-semibold text-base">{doctor.name}</p>
+              <p className="text-slate-300 text-xs mt-0.5">{doctorType}</p>
+            </div>
+            {/* Tap hint */}
+            <div className="pointer-events-none absolute top-3 right-3 z-[3] bg-black/50 rounded-full px-2.5 py-1 text-[10px] text-white/70">
+              Tap to show transcript
+            </div>
+            {/* Local PiP in doctor view */}
+            {hasLocalVideo && showMyVideo && (
+              <div className="absolute top-3 left-3 z-[3] w-16 h-20 overflow-hidden rounded-xl border border-white/25 bg-slate-800 shadow-lg">
+                <div ref={localPipDivRef} className="h-full w-full" />
+                <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-black/50 px-1 text-[9px] font-medium text-white">You</span>
+              </div>
+            )}
+          </div>
         ) : (
           <>
-            <div
-              className={`relative w-full max-w-[min(100%,280px)] aspect-[3/4] rounded-2xl overflow-hidden bg-slate-900 shadow-2xl shadow-blue-950/40 border border-white/10 shrink-0 ${
-                status === 'connecting' ? 'opacity-70' : ''
-              }`}
-            >
-              {status === 'active' && (
-                <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-blue-500/15 animate-pulse z-0" aria-hidden />
-              )}
-              <img
-                src={doctor.photo}
-                alt=""
-                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-                  remoteHasVideo ? 'opacity-0' : 'opacity-100'
+            {/* Doctor card — compact horizontal layout, tap thumbnail to zoom */}
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setDoctorView(true)}
+                title="Tap to view doctor"
+                className={`relative w-16 h-16 rounded-2xl overflow-hidden bg-slate-900 border border-white/10 shrink-0 focus:outline-none ${
+                  status === 'connecting' ? 'opacity-70' : 'active:scale-95 transition-transform'
                 }`}
-              />
-              <div
-                ref={remoteDoctorVideoRef}
-                className={`absolute inset-0 z-[1] h-full w-full bg-black transition-opacity duration-300 ${
-                  remoteHasVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                }`}
-              />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-3 pt-10">
-                <p className="text-white font-semibold text-base leading-tight">{doctor.name}</p>
-                <p className="text-slate-300 text-xs mt-0.5">{doctorType}</p>
+              >
+                {status === 'active' && (
+                  <div className="pointer-events-none absolute -inset-0.5 rounded-2xl bg-blue-500/20 animate-pulse z-0" aria-hidden />
+                )}
+                <img
+                  src={doctor.photo}
+                  alt=""
+                  className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-300 ${
+                    remoteHasVideo ? 'opacity-0' : 'opacity-100'
+                  }`}
+                />
+                <div
+                  ref={remoteDoctorVideoRef}
+                  className={`absolute inset-0 z-[1] h-full w-full bg-black transition-opacity duration-300 ${
+                    remoteHasVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`}
+                />
+                <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center opacity-0 hover:opacity-100 bg-black/30 transition-opacity">
+                  <span className="text-white text-[9px] font-medium">Zoom</span>
+                </div>
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold text-sm">{doctor.name}</p>
+                <p className="text-slate-400 text-xs">{doctorType}</p>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Consulting <span className="text-slate-300">{patientName}</span>
+                </p>
               </div>
+              {/* Local PiP */}
               {hasLocalVideo && showMyVideo && (
-                <div className="absolute top-2 right-2 z-[3] w-[30%] min-w-[76px] max-w-[120px] aspect-[3/4] overflow-hidden rounded-xl border-2 border-white/35 bg-slate-800 shadow-lg">
+                <div className="relative w-12 h-16 overflow-hidden rounded-xl border border-white/20 bg-slate-800 shrink-0">
                   <div ref={localPipDivRef} className="h-full w-full" />
-                  <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/50 px-1 py-0.5 text-[10px] font-medium text-white">
-                    You
-                  </span>
+                  <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-black/50 px-1 text-[9px] font-medium text-white">You</span>
                 </div>
               )}
-            </div>
-
-            <div className="text-center">
-              <h2 className="text-white font-bold text-lg">{doctor.name}</h2>
-              <p className="text-slate-400 text-sm mt-0.5">
-                Consulting <span className="text-slate-300">{patientName}</span>
-              </p>
               {status === 'connecting' && (
-                <div className="flex items-center justify-center gap-2 mt-3 text-yellow-400 text-sm">
-                  <Loader2 size={14} className="animate-spin" />
-                  Connecting to doctor…
+                <div className="flex items-center gap-1 text-yellow-400 text-xs shrink-0">
+                  <Loader2 size={12} className="animate-spin" />
+                  Connecting…
                 </div>
               )}
               {status === 'ending' && (
-                <div className="flex items-center justify-center gap-2 mt-3 text-orange-400 text-sm">
-                  <Loader2 size={14} className="animate-spin" />
-                  Saving consultation…
+                <div className="flex items-center gap-1 text-orange-400 text-xs shrink-0">
+                  <Loader2 size={12} className="animate-spin" />
+                  Saving…
                 </div>
               )}
             </div>
 
-            {/* Transcript toggle */}
-            <button
-              onClick={() => setShowTranscript(v => !v)}
-              className="flex items-center gap-1.5 text-slate-500 text-xs border border-card px-3 py-1.5 rounded-full"
-            >
-              {showTranscript ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-              {showTranscript ? 'Hide transcript' : 'Show transcript'}
-            </button>
-
-            {/* Transcript */}
-            {showTranscript && (
-              <div className="w-full max-h-48 overflow-y-auto space-y-2 bg-card rounded-xl p-3 border border-card">
+            {/* Transcript — always visible, fills remaining space */}
+            <div className="flex-1 min-h-0 flex flex-col bg-[#161b22] rounded-2xl border border-white/8 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 shrink-0">
+                <span className="text-xs text-slate-500 font-medium">Conversation</span>
+                {transcript.length > 0 && (
+                  <span className="text-[10px] text-slate-600">{transcript.filter(m => m.isFinal).length} turns</span>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
                 {transcript.length === 0 ? (
-                  <p className="text-slate-500 text-xs text-center py-4">Waiting for conversation to start…</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                      <Mic size={14} className="text-slate-500" />
+                    </div>
+                    <p className="text-slate-500 text-xs">Conversation will appear here as you speak…</p>
+                  </div>
                 ) : (
                   transcript.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
-                        msg.role === 'user' ? 'bg-blue-600 text-white' :
-                        msg.role === 'system' ? 'text-slate-500 italic text-center w-full' :
-                        'bg-white/10 text-slate-200'
+                    <div key={i} className={`flex flex-col gap-0.5 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <span className="text-[10px] text-slate-600 px-1">
+                        {msg.role === 'user' ? 'You' : doctor.name}
+                      </span>
+                      <div className={`max-w-[88%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                        msg.role === 'user'
+                          ? `bg-blue-600 text-white ${!msg.isFinal ? 'opacity-60' : 'opacity-100'}`
+                          : `bg-white/8 text-slate-200 ${!msg.isFinal ? 'opacity-60 italic' : 'opacity-100'}`
                       }`}>
                         {msg.text}
+                        {!msg.isFinal && <span className="ml-1 animate-pulse opacity-70">…</span>}
                       </div>
                     </div>
                   ))
                 )}
                 <div ref={transcriptEndRef} />
               </div>
-            )}
+            </div>
           </>
         )}
       </div>
