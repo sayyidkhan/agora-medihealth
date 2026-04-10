@@ -390,6 +390,27 @@ export default function Consult() {
             <div className="pointer-events-none absolute top-3 right-3 z-[3] bg-black/50 rounded-full px-2.5 py-1 text-[10px] text-white/70">
               Tap to show transcript
             </div>
+            {/* Transcript overlay — last 3 messages, translucent, only in doctor view */}
+            {transcript.length > 0 && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-16 z-[3] px-3 flex flex-col gap-1.5 justify-end">
+                {transcript.slice(-3).map((msg, i, arr) => (
+                  <div
+                    key={`${msg.role}-${i}`}
+                    className={`flex flex-col gap-0.5 transition-all duration-500 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                    style={{ opacity: 0.4 + (i / (arr.length - 1 || 1)) * 0.6 }}
+                  >
+                    <div className={`max-w-[85%] px-3 py-1.5 rounded-2xl text-xs leading-relaxed backdrop-blur-sm ${
+                      msg.role === 'user'
+                        ? 'bg-blue-600/60 text-white'
+                        : 'bg-black/50 text-slate-100'
+                    }`}>
+                      {msg.text}
+                      {!msg.isFinal && <span className="ml-1 animate-pulse opacity-70">…</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {/* Local PiP in doctor view */}
             {hasLocalVideo && showMyVideo && (
               <div className="absolute top-3 left-3 z-[3] w-16 h-20 overflow-hidden rounded-xl border border-white/25 bg-slate-800 shadow-lg">
