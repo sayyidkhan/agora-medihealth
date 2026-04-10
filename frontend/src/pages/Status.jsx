@@ -90,9 +90,9 @@ export default function Status() {
   const StatusIcon = cfg.icon
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-blue-950">
+    <div className="min-h-screen bg-slate-950">
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-white/10 sticky top-0 bg-slate-950/80 backdrop-blur z-10">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-slate-800 sticky top-0 bg-slate-950 z-10">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 active:text-white transition-colors">
           <ArrowLeft size={18} />
           <span className="text-sm">Home</span>
@@ -109,7 +109,7 @@ export default function Status() {
 
       <div className="px-4 py-6 max-w-lg mx-auto space-y-4 pb-12">
         {/* Big status hero */}
-        <div className={`${cfg.bg} border ${cfg.border} rounded-3xl p-6 text-center space-y-2`}>
+        <div className={`${cfg.bg} border ${cfg.border} rounded-2xl p-5 text-center space-y-2`}>
           <div className="text-5xl">{cfg.emoji}</div>
           <h2 className={`text-xl font-bold ${cfg.color}`}>{cfg.label}</h2>
           <p className="text-slate-300 text-sm leading-relaxed">{cfg.desc}</p>
@@ -122,7 +122,7 @@ export default function Status() {
         </div>
 
         {/* Summary card */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
           <h3 className="font-semibold text-white text-sm">Consultation Details</h3>
           <div className="space-y-2">
             <Row label="Patient" value={consultation.patient_name} />
@@ -136,7 +136,7 @@ export default function Status() {
 
         {/* AI Summary */}
         {consultation.ai_summary && (
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
             <h3 className="font-semibold text-white text-sm mb-2">AI Clinical Summary</h3>
             <p className="text-slate-300 text-sm leading-relaxed">{consultation.ai_summary}</p>
           </div>
@@ -145,7 +145,7 @@ export default function Status() {
         {/* Approved: MC */}
         {consultation.status === 'approved' && (
           <>
-            <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 space-y-3">
+            <div className="bg-green-950/50 border border-green-800/50 rounded-2xl p-4 space-y-3">
               <h3 className="font-semibold text-green-400 text-sm">Medical Certificate</h3>
               <div className="space-y-2">
                 <Row label="MC Duration" value={`${consultation.mc_duration_days} day(s)`} />
@@ -161,7 +161,7 @@ export default function Status() {
             </div>
 
             {consultation.medicine_recommendations?.length > 0 && (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <h3 className="font-semibold text-white text-sm flex items-center gap-2">
                   <Pill size={16} className="text-blue-400" /> Recommended Medicines
                 </h3>
@@ -179,7 +179,7 @@ export default function Status() {
 
         {/* Escalated */}
         {consultation.status === 'escalated' && (
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 space-y-3">
+          <div className="bg-orange-950/40 border border-orange-800/40 rounded-2xl p-4 space-y-3">
             <h3 className="font-semibold text-orange-400 text-sm">Next Steps</h3>
             <p className="text-slate-300 text-sm">Visit your nearest polyclinic or GP clinic for an in-person examination.</p>
             <a
@@ -194,7 +194,7 @@ export default function Status() {
         {/* New consultation */}
         <button
           onClick={() => navigate('/')}
-          className="w-full border border-white/10 text-slate-400 py-3.5 rounded-2xl text-sm font-medium"
+          className="w-full border border-slate-700 text-slate-400 py-3.5 rounded-xl text-sm font-medium"
         >
           Start New Consultation
         </button>

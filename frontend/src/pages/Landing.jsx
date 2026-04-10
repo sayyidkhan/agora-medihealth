@@ -39,68 +39,67 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950">
+    <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-white/10 sticky top-0 bg-slate-950/80 backdrop-blur z-10">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-slate-800 sticky top-0 bg-slate-950 z-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-            <Stethoscope size={16} className="text-white" />
+          <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
+            <Stethoscope size={15} className="text-white" />
           </div>
-          <span className="text-lg font-bold text-white">MediVoice</span>
+          <span className="text-base font-bold text-white">MediVoice</span>
         </div>
         <button
           onClick={() => navigate('/doctor')}
-          className="text-xs text-slate-400 hover:text-white transition-colors border border-white/10 px-3 py-1.5 rounded-lg"
+          className="text-xs text-slate-400 border border-slate-700 px-3 py-1.5 rounded-lg"
         >
           Doctor Login
         </button>
       </header>
 
-      <div className="px-4 py-6 max-w-lg mx-auto space-y-6 pb-12">
+      <div className="flex-1 px-5 py-6 max-w-lg mx-auto w-full space-y-5">
         {/* Hero */}
-        <div className="text-center pt-2 space-y-3">
-          <div className="inline-flex items-center gap-1.5 bg-blue-500/20 text-blue-300 text-xs px-3 py-1.5 rounded-full border border-blue-500/30">
-            <Mic size={12} />
+        <div className="text-center space-y-2 pb-1">
+          <div className="inline-flex items-center gap-1.5 bg-blue-600/20 text-blue-400 text-xs px-3 py-1.5 rounded-full">
+            <Mic size={11} />
             AI Voice Consultation
           </div>
-          <h1 className="text-3xl font-bold text-white leading-tight">
+          <h1 className="text-3xl font-extrabold text-white leading-tight tracking-tight">
             See a doctor.<br />
             <span className="text-blue-400">From your phone.</span>
           </h1>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            Talk to our AI doctor, get reviewed by a licensed GP, and receive your MC digitally — no queue, no clinic.
+          <p className="text-slate-500 text-sm">
+            Talk to our AI, get reviewed by a licensed GP, receive your MC digitally.
           </p>
         </div>
 
         {/* Name */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Your Name</label>
+          <label className="text-sm font-medium text-slate-300">Your name</label>
           <input
             type="text"
             value={name}
             onChange={e => { setName(e.target.value); setError('') }}
             placeholder="e.g. Sayyid Khan"
-            className="w-full bg-white/8 border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:bg-white/10 transition-all text-base"
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all text-base"
           />
         </div>
 
         {/* Doctor Type */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Doctor Type</label>
+          <label className="text-sm font-medium text-slate-300">Doctor type</label>
           <div className="grid grid-cols-3 gap-2">
-            {DOCTOR_TYPES.map(({ id, label, desc, icon: Icon }) => (
+            {DOCTOR_TYPES.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setDoctorType(id)}
-                className={`p-3 rounded-2xl border text-left transition-all active:scale-95 ${
+                className={`p-3 rounded-xl border text-center transition-all active:scale-95 ${
                   doctorType === id
-                    ? 'border-blue-500 bg-blue-500/20 text-white'
-                    : 'border-white/10 bg-white/5 text-slate-400'
+                    ? 'border-blue-500 bg-blue-600/20 text-white'
+                    : 'border-slate-700 bg-slate-900 text-slate-400'
                 }`}
               >
-                <Icon size={18} className={doctorType === id ? 'text-blue-400 mb-1.5' : 'text-slate-500 mb-1.5'} />
-                <div className="font-semibold text-xs leading-tight">{label}</div>
-                <div className="text-xs text-slate-500 mt-0.5 leading-tight hidden sm:block">{desc}</div>
+                <Icon size={20} className={`mx-auto mb-1.5 ${doctorType === id ? 'text-blue-400' : 'text-slate-600'}`} />
+                <div className="font-medium text-xs leading-tight">{label}</div>
               </button>
             ))}
           </div>
@@ -108,19 +107,19 @@ export default function Landing() {
 
         {/* Voice */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Doctor Voice</label>
+          <label className="text-sm font-medium text-slate-300">Doctor voice</label>
           <div className="grid grid-cols-2 gap-2">
             {VOICE_OPTIONS.map(({ id, label, emoji }) => (
               <button
                 key={id}
                 onClick={() => setVoiceType(id)}
-                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all active:scale-95 ${
+                className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border transition-all active:scale-95 ${
                   voiceType === id
-                    ? 'border-purple-500 bg-purple-500/20 text-white'
-                    : 'border-white/10 bg-white/5 text-slate-400'
+                    ? 'border-purple-500 bg-purple-600/20 text-white'
+                    : 'border-slate-700 bg-slate-900 text-slate-400'
                 }`}
               >
-                <span className="text-2xl">{emoji}</span>
+                <span className="text-xl">{emoji}</span>
                 <span className="text-sm font-medium">{label}</span>
               </button>
             ))}
@@ -129,34 +128,30 @@ export default function Landing() {
 
         {/* Symptoms */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Describe your symptoms</label>
+          <label className="text-sm font-medium text-slate-300">Describe your symptoms</label>
           <textarea
             value={prePrompt}
             onChange={e => { setPrePrompt(e.target.value); setError('') }}
-            placeholder="e.g. I have a runny nose, mild fever and sore throat since yesterday..."
+            placeholder="e.g. Runny nose, mild fever and sore throat since yesterday..."
             rows={3}
-            className="w-full bg-white/8 border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:bg-white/10 transition-all resize-none text-base"
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all resize-none text-base"
           />
         </div>
 
-        {error && (
-          <p className="text-red-400 text-sm text-center">{error}</p>
-        )}
+        {error && <p className="text-red-400 text-sm text-center -mt-1">{error}</p>}
 
         {/* CTA */}
         <button
           onClick={handleStart}
-          className="w-full bg-blue-600 active:bg-blue-700 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-base shadow-lg shadow-blue-900/40"
+          className="w-full bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 text-base shadow-lg shadow-blue-900/50"
         >
-          <Mic size={20} />
+          <Mic size={18} />
           Start Consultation
-          <ChevronRight size={18} />
         </button>
 
-        {/* Trust badge */}
-        <div className="flex items-center justify-center gap-2 text-slate-600 text-xs">
-          <ShieldCheck size={14} />
-          <span>Emergency? Call <span className="text-slate-400 font-semibold">995</span> immediately</span>
+        <div className="flex items-center justify-center gap-1.5 text-slate-700 text-xs pb-4">
+          <ShieldCheck size={13} />
+          <span>Emergency? Call <span className="text-slate-500 font-semibold">995</span></span>
         </div>
       </div>
     </div>

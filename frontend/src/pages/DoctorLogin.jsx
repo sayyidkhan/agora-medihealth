@@ -35,7 +35,7 @@ export default function DoctorLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-blue-950 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-950 flex flex-col max-w-sm mx-auto">
       <header className="px-5 py-4">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 text-sm">
           <ArrowLeft size={16} /> Patient App
@@ -53,12 +53,12 @@ export default function DoctorLogin() {
         </div>
 
         {/* PIN dots */}
-        <div className={`flex gap-4 transition-all ${shaking ? 'animate-bounce' : ''}`}>
+        <div className={`flex gap-5 transition-all ${shaking ? 'animate-bounce' : ''}`}>
           {[0,1,2,3].map(i => (
-            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all ${
+            <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all ${
               i < pin.length
-                ? error ? 'bg-red-500 border-red-500' : 'bg-blue-400 border-blue-400'
-                : 'border-white/30'
+                ? error ? 'bg-red-500 border-red-500' : 'bg-blue-500 border-blue-500'
+                : 'border-slate-600'
             }`} />
           ))}
         </div>
@@ -74,8 +74,8 @@ export default function DoctorLogin() {
               onClick={() => handleKey(key)}
               className={`h-16 rounded-2xl text-xl font-semibold transition-all active:scale-95 ${
                 key === '⌫'
-                  ? 'bg-white/5 text-slate-400 border border-white/10'
-                  : 'bg-white/10 text-white border border-white/10 active:bg-white/20'
+                  ? 'bg-slate-900 text-slate-500 border border-slate-700'
+                  : 'bg-slate-800 text-white border border-slate-700 active:bg-slate-700'
               }`}
             >
               {key}

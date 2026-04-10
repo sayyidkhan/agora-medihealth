@@ -172,7 +172,7 @@ export default function Consult() {
   if (!name) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-blue-950 flex flex-col max-w-lg mx-auto">
+    <div className="min-h-screen bg-slate-950 flex flex-col max-w-lg mx-auto">
 
       {/* Status bar */}
       <div className={`h-1 w-full transition-all ${
@@ -182,10 +182,10 @@ export default function Consult() {
       }`} />
 
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
-            <Stethoscope size={14} className="text-white" />
+          <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center">
+            <Stethoscope size={13} className="text-white" />
           </div>
           <span className="font-bold text-white text-sm">MediVoice</span>
         </div>
@@ -224,7 +224,7 @@ export default function Consult() {
                   <div className="absolute inset-0 rounded-full bg-blue-500/10 animate-ping scale-150 animation-delay-150" />
                 </>
               )}
-              <div className={`relative w-36 h-36 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center text-7xl shadow-2xl shadow-blue-900/50 ${status === 'connecting' ? 'opacity-60' : ''}`}>
+              <div className={`relative w-32 h-32 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center text-6xl shadow-2xl shadow-blue-900/50 ${status === 'connecting' ? 'opacity-50' : ''}`}>
                 {voiceType?.includes('female') ? '👩‍⚕️' : '👨‍⚕️'}
               </div>
             </div>
@@ -249,7 +249,7 @@ export default function Consult() {
             {/* Transcript toggle */}
             <button
               onClick={() => setShowTranscript(v => !v)}
-              className="flex items-center gap-1.5 text-slate-400 text-xs border border-white/10 px-3 py-1.5 rounded-full"
+              className="flex items-center gap-1.5 text-slate-500 text-xs border border-slate-700 px-3 py-1.5 rounded-full"
             >
               {showTranscript ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
               {showTranscript ? 'Hide transcript' : 'Show transcript'}
@@ -257,7 +257,7 @@ export default function Consult() {
 
             {/* Transcript */}
             {showTranscript && (
-              <div className="w-full max-h-48 overflow-y-auto space-y-2 bg-white/5 rounded-2xl p-3 border border-white/10">
+              <div className="w-full max-h-48 overflow-y-auto space-y-2 bg-slate-900 rounded-xl p-3 border border-slate-700">
                 {transcript.length === 0 ? (
                   <p className="text-slate-500 text-xs text-center py-4">Waiting for conversation to start…</p>
                 ) : (
@@ -281,14 +281,14 @@ export default function Consult() {
       </div>
 
       {/* Fixed bottom controls */}
-      <div className="px-6 pb-10 pt-4 border-t border-white/10">
+      <div className="px-6 pb-10 pt-4 border-t border-slate-800">
         <div className="flex items-center justify-center gap-8">
           {/* Mute */}
           <button
             onClick={toggleMute}
             disabled={status !== 'active'}
             className={`w-14 h-14 rounded-full flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-30 ${
-              muted ? 'bg-red-500/30 border-2 border-red-500 text-red-400' : 'bg-white/10 border-2 border-white/20 text-white'
+              muted ? 'bg-red-500/20 border-2 border-red-500 text-red-400' : 'bg-slate-800 border-2 border-slate-600 text-white'
             }`}
           >
             {muted ? <MicOff size={20} /> : <Mic size={20} />}
