@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://medivoice-backend.onrender.com/:path*"
+      "destination": "https://agora-medihealth.onrender.com/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
