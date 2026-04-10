@@ -35,7 +35,7 @@ export default function DoctorLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col max-w-sm mx-auto">
+    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-sm mx-auto">
       <header className="px-5 py-4">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 text-sm">
           <ArrowLeft size={16} /> Patient App
@@ -58,7 +58,7 @@ export default function DoctorLogin() {
             <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all ${
               i < pin.length
                 ? error ? 'bg-red-500 border-red-500' : 'bg-blue-500 border-blue-500'
-                : 'border-slate-600'
+                : 'border-card'
             }`} />
           ))}
         </div>
@@ -74,8 +74,8 @@ export default function DoctorLogin() {
               onClick={() => handleKey(key)}
               className={`h-16 rounded-2xl text-xl font-semibold transition-all active:scale-95 ${
                 key === '⌫'
-                  ? 'bg-slate-900 text-slate-500 border border-slate-700'
-                  : 'bg-slate-800 text-white border border-slate-700 active:bg-slate-700'
+                  ? 'bg-card text-slate-500 border border-card'
+                  : 'bg-card text-white border border-card active:bg-slate-700'
               }`}
             >
               {key}

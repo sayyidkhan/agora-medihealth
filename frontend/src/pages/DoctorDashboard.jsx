@@ -39,9 +39,9 @@ export default function DoctorDashboard() {
   const filtered = consultations.filter(c => c.status === tab)
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col max-w-lg mx-auto">
+    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-lg mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-slate-800 sticky top-0 bg-slate-950 z-10">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-card sticky top-0 bg-[#0d1117] z-10">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
             <Stethoscope size={16} className="text-white" />
@@ -76,7 +76,7 @@ export default function DoctorDashboard() {
               key={s}
               onClick={() => setTab(s)}
               className={`rounded-xl p-3 text-center border transition-all active:scale-95 ${
-                tab === s ? `${cfg.bg} ${cfg.border}` : 'bg-slate-900 border-slate-800'
+                tab === s ? `${cfg.bg} ${cfg.border}` : 'bg-card border-card'
               }`}
             >
               <div className={`text-2xl font-bold ${tab === s ? cfg.color : 'text-white'}`}>{count}</div>
@@ -93,7 +93,7 @@ export default function DoctorDashboard() {
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all capitalize ${
-              tab === t ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-500 border border-slate-800'
+              tab === t ? 'bg-blue-600 text-white' : 'bg-card text-slate-500 border border-card'
             }`}
           >
             {STATUS_STYLES[t].label}
@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
               <button
                 key={c.id}
                 onClick={() => navigate(`/doctor/case/${c.id}`)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3 text-left active:bg-slate-800 transition-all"
+                className="w-full bg-card border border-card rounded-xl p-4 flex items-center gap-3 text-left active:bg-card transition-all"
               >
                 {/* Avatar */}
                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">

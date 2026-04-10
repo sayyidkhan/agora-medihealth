@@ -92,7 +92,7 @@ export default function DoctorCase() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
         <Loader2 size={36} className="animate-spin text-blue-400" />
       </div>
     )
@@ -100,7 +100,7 @@ export default function DoctorCase() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 gap-5">
+      <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center p-6 gap-5">
         <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
           <CheckCircle size={44} className="text-green-400" />
         </div>
@@ -117,9 +117,9 @@ export default function DoctorCase() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col max-w-lg mx-auto">
+    <div className="min-h-screen bg-[#0d1117] flex flex-col max-w-lg mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-slate-800 sticky top-0 bg-slate-950 z-10">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-card sticky top-0 bg-[#0d1117] z-10">
         <button onClick={() => navigate('/doctor/dashboard')} className="flex items-center gap-2 text-slate-400 text-sm">
           <ArrowLeft size={16} /> Queue
         </button>
@@ -138,7 +138,7 @@ export default function DoctorCase() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-36">
 
         {/* Patient header */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-card border border-card rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
               <User size={20} className="text-white" />
@@ -170,14 +170,14 @@ export default function DoctorCase() {
         </div>
 
         {/* AI Summary */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-card border border-card rounded-xl p-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">AI Clinical Summary</p>
           <p className="text-slate-200 text-sm leading-relaxed">{consultation?.ai_summary}</p>
         </div>
 
         {/* Transcript */}
         {consultation?.transcript && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="bg-card border border-card rounded-xl p-4">
             <button
               onClick={() => setShowTranscript(!showTranscript)}
               className="flex items-center gap-2 text-blue-400 text-sm w-full"
@@ -186,7 +186,7 @@ export default function DoctorCase() {
               {showTranscript ? 'Hide' : 'View'} Transcript
             </button>
             {showTranscript && (
-              <pre className="mt-3 text-xs text-slate-400 whitespace-pre-wrap font-mono bg-slate-950 rounded-lg p-3 max-h-52 overflow-y-auto border border-slate-800">
+              <pre className="mt-3 text-xs text-slate-400 whitespace-pre-wrap font-mono bg-[#0d1117] rounded-lg p-3 max-h-52 overflow-y-auto border border-card">
                 {consultation.transcript}
               </pre>
             )}
@@ -197,7 +197,7 @@ export default function DoctorCase() {
         {consultation?.status === 'pending' && (
           <>
             {/* MC Duration */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-card border border-card rounded-xl p-4 space-y-3">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">MC Duration</p>
               <div className="grid grid-cols-3 gap-2">
                 {[1, 2, 3].map(d => (
@@ -207,7 +207,7 @@ export default function DoctorCase() {
                     className={`py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
                       mcDays === d
                         ? 'bg-blue-600 border-blue-500 text-white'
-                        : 'bg-slate-800 border-slate-700 text-slate-300'
+                        : 'bg-card border-card text-slate-300'
                     }`}
                   >
                     {d} Day{d > 1 ? 's' : ''}
@@ -217,7 +217,7 @@ export default function DoctorCase() {
             </div>
 
             {/* Medicines */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="bg-card border border-card rounded-xl p-4 space-y-3">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-2">
                 <Pill size={13} className="text-blue-400" /> Recommend Medicines
               </p>
@@ -245,7 +245,7 @@ export default function DoctorCase() {
                   onChange={e => setCustomMed(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addCustomMed()}
                   placeholder="Add custom medicine…"
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-card border border-card rounded-xl px-3 py-2.5 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
                 <button onClick={addCustomMed} className="bg-blue-600 active:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-medium">
                   Add
@@ -254,14 +254,14 @@ export default function DoctorCase() {
             </div>
 
             {/* Notes */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div className="bg-card border border-card rounded-xl p-4 space-y-2">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Notes for Patient (optional)</p>
               <textarea
                 value={doctorNotes}
                 onChange={e => setDoctorNotes(e.target.value)}
                 placeholder="Any instructions or follow-up advice…"
                 rows={3}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+                className="w-full bg-card border border-card rounded-xl px-3 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
               />
             </div>
           </>
@@ -270,7 +270,7 @@ export default function DoctorCase() {
 
       {/* Sticky bottom actions — only for pending */}
       {consultation?.status === 'pending' && (
-        <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto px-4 pb-8 pt-4 bg-slate-950 border-t border-slate-800">
+        <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto px-4 pb-8 pt-4 bg-[#0d1117] border-t border-card">
           <div className="flex gap-3">
             <button
               onClick={handleEscalate}

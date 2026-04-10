@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+.bg-card { background-color: #1c2333; }
+.bg-input { background-color: #1c2333; }
+.border-card { border-color: #344153; }
+.input-base {
+  background-color: #1c2333;
+  border: 1.5px solid #344153;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font-size: 15px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-base:focus { border-color: #3b82f6; }
+.input-base::placeholder { color: #64748b; }
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,9 +29,8 @@ html {
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: #0f172a;
+  background: #0d1117;
   color: #f1f5f9;
-  min-height: 100vh;
 }
 
 #root {
