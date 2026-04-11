@@ -9,9 +9,9 @@ Voice-first AI telehealth demo: patients describe symptoms through an Agora-powe
 | | |
 |--|--|
 | **Source code (repository)** | [github.com/sayyidkhan/agora-medihealth](https://github.com/sayyidkhan/agora-medihealth) |
-| **Frontend** | [tree/main/frontend](https://github.com/sayyidkhan/agora-medihealth/tree/main/frontend) |
-| **Backend** | [tree/main/backend](https://github.com/sayyidkhan/agora-medihealth/tree/main/backend) |
-| **Presentation** | [tree/main/presentation](https://github.com/sayyidkhan/agora-medihealth/tree/main/presentation) |
+| **Live app (frontend)** | [agora-medihealth.vercel.app](https://agora-medihealth.vercel.app/) |
+| **Live API (backend)** | [agora-medihealth.onrender.com](https://agora-medihealth.onrender.com) |
+| **Slides (GitHub Pages)** | [sayyidkhan.github.io/agora-medihealth](https://sayyidkhan.github.io/agora-medihealth/) |
 | **Video demo** | [youtu.be/v4ACgmgYVfg](https://www.youtube.com/watch?v=v4ACgmgYVfg) |
 
 ## Repository layout

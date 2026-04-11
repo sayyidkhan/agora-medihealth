@@ -8,7 +8,9 @@
 |-------|-------|
 | **Project Name** | MediVoice |
 | **Tagline** | Speak your symptoms. Get your MC. Skip the queue. |
-| **Demo URL** | https://agora-medihealth.vercel.app/ |
+| **Live app** | https://agora-medihealth.vercel.app/ |
+| **Live API** | https://agora-medihealth.onrender.com |
+| **Slides (web)** | https://sayyidkhan.github.io/agora-medihealth/ |
 | **Repository** | https://github.com/sayyidkhan/agora-medihealth |
 | **Video Demo** | https://www.youtube.com/watch?v=v4ACgmgYVfg |
 | **Slides (PDF)** | Uploaded to submission portal (Supabase storage) |
