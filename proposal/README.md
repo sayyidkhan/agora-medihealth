@@ -10,7 +10,7 @@
 | **Tagline** | Speak your symptoms. Get your MC. Skip the queue. |
 | **Demo URL** | https://agora-medihealth.vercel.app/ |
 | **Repository** | https://github.com/sayyidkhan/agora-medihealth |
-| **Video Demo** | https://youtu.be/ynHAoxRkXcw |
+| **Video Demo** | https://www.youtube.com/watch?v=v4ACgmgYVfg |
 | **Slides (PDF)** | Uploaded to submission portal (Supabase storage) |
 
 ---
