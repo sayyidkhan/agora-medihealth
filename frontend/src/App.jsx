@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import PinGate from './components/PinGate'
 import Landing from './pages/Landing'
 import PatientLogin from './pages/PatientLogin'
 import Consult from './pages/Consult'
@@ -11,16 +12,18 @@ import DoctorCase from './pages/DoctorCase'
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<PatientLogin />} />
-        <Route path="/" element={<Landing />} />
-        <Route path="/consult" element={<Consult />} />
-        <Route path="/status/:id" element={<Status />} />
-        <Route path="/my-records" element={<MyRecords />} />
-        <Route path="/doctor" element={<DoctorLogin />} />
-        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-        <Route path="/doctor/case/:id" element={<DoctorCase />} />
-      </Routes>
+      <PinGate>
+        <Routes>
+          <Route path="/login" element={<PatientLogin />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/consult" element={<Consult />} />
+          <Route path="/status/:id" element={<Status />} />
+          <Route path="/my-records" element={<MyRecords />} />
+          <Route path="/doctor" element={<DoctorLogin />} />
+          <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+          <Route path="/doctor/case/:id" element={<DoctorCase />} />
+        </Routes>
+      </PinGate>
     </BrowserRouter>
   )
 }

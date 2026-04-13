@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Stethoscope, LogIn, UserRound, Mail } from 'lucide-react'
+import { Stethoscope, LogIn, UserRound, Mail, Lock } from 'lucide-react'
 import { setPatientSession } from '../patientSession'
+import { endPinGateSession, isPinGateEnabled } from '../pinGateSession'
 
 const DEMO_PROFILES = [
   { name: 'Sarah Lim', email: 'sarah.lim@demo.com' },
@@ -55,12 +56,28 @@ export default function PatientLogin() {
       <div className="pointer-events-none absolute -top-28 -left-24 h-80 w-80 rounded-full bg-blue-700/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-cyan-700/20 blur-3xl" />
 
-      <Link
-        to="/doctor"
-        className="absolute top-4 right-4 z-20 rounded-lg border border-white/15 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:border-white/30 transition-colors"
-      >
-        Doctor portal
-      </Link>
+      <div className="absolute top-4 right-4 z-20 flex flex-wrap items-center justify-end gap-2">
+        <Link
+          to="/doctor"
+          className="rounded-lg border border-white/15 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:border-white/30 transition-colors"
+        >
+          Doctor portal
+        </Link>
+        {isPinGateEnabled() ? (
+          <button
+            type="button"
+            onClick={() => {
+              endPinGateSession()
+              window.location.reload()
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:border-amber-500/40 hover:bg-slate-800/90 transition-colors"
+            title="Clear demo access and show the PIN screen again"
+          >
+            <Lock size={13} className="text-amber-400/90" aria-hidden />
+            End session
+          </button>
+        ) : null}
+      </div>
 
       <main className="relative z-10 min-h-dvh w-full px-4 pt-16 pb-10 flex items-center justify-center">
         <div className="w-full max-w-[480px] mx-auto">
